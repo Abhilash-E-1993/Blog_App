@@ -1,3 +1,4 @@
+// src/pages/CreatePostPage.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -14,19 +15,34 @@ function slugify(title) {
     .replace(/(^-|-$)+/g, "");
 }
 
+function normalizeUrl(url) {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+
 export default function CreatePostPage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("Write your post here in **Markdown**.");
+  const [content, setContent] = useState(
+    "Write your post here in **Markdown**."
+  );
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [imageUrl, setImageUrl] = useState(""); // final Cloudinary URL
+  const [imageUrl, setImageUrl] = useState("");
+
+  // Simple helper for inserting links into markdown without forcing user to type https://
+  const [rawLinkLabel, setRawLinkLabel] = useState("");
+  const [rawLinkUrl, setRawLinkUrl] = useState("");
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
@@ -53,6 +69,23 @@ export default function CreatePostPage() {
     }
   };
 
+  const handleInsertLink = () => {
+    setError("");
+    if (!rawLinkUrl.trim()) {
+      setError("Please enter a link URL.");
+      return;
+    }
+    const fullUrl = normalizeUrl(rawLinkUrl);
+    const label = rawLinkLabel.trim() || fullUrl;
+    const markdownLink = `[${label}](${fullUrl})`;
+
+    setContent((prev) =>
+      prev ? `${prev}\n\n${markdownLink}` : markdownLink
+    );
+    setRawLinkLabel("");
+    setRawLinkUrl("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -67,12 +100,6 @@ export default function CreatePostPage() {
       return;
     }
 
-    // Optional: force user to upload image before publishing
-    // if (!imageUrl) {
-    //   setError("Please upload an image before publishing.");
-    //   return;
-    // }
-
     try {
       setSubmitting(true);
 
@@ -84,7 +111,7 @@ export default function CreatePostPage() {
         title: title.trim(),
         slug,
         content: content,
-        imageUrl: imageUrl || "", // Cloudinary URL or empty
+        imageUrl: imageUrl || "",
         authorId: currentUser.uid,
         authorName: currentUser.displayName || "Unknown",
         createdAt: serverTimestamp(),
@@ -102,7 +129,9 @@ export default function CreatePostPage() {
 
   return (
     <div className="max-w-3xl mx-auto" data-color-mode="dark">
-      <h1 className="text-2xl font-semibold text-white mb-4">Create new post</h1>
+      <h1 className="text-2xl font-semibold text-white mb-4">
+        Create new post
+      </h1>
 
       {error && (
         <div className="mb-3 text-sm text-red-400 bg-red-950/40 border border-red-500/40 px-3 py-2 rounded">
@@ -113,7 +142,9 @@ export default function CreatePostPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Title */}
         <div>
-          <label className="block text-sm text-slate-200 mb-1">Title</label>
+          <label className="block text-sm text-slate-200 mb-1">
+            Title
+          </label>
           <input
             type="text"
             value={title}
@@ -180,6 +211,36 @@ export default function CreatePostPage() {
           <p className="mt-1 text-xs text-slate-400">
             Supports headings, **bold**, _italic_, lists, links, tables, etc.
           </p>
+        </div>
+
+        {/* Optional: quick link inserter */}
+        <div className="border border-slate-700 rounded-md p-3 bg-slate-900/60 space-y-2">
+          <p className="text-xs text-slate-300">
+            Quick link (no need to type https):
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={rawLinkLabel}
+              onChange={(e) => setRawLinkLabel(e.target.value)}
+              placeholder="Link text (e.g. Google)"
+              className="flex-1 rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <input
+              type="text"
+              value={rawLinkUrl}
+              onChange={(e) => setRawLinkUrl(e.target.value)}
+              placeholder="google.com"
+              className="flex-1 rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={handleInsertLink}
+              className="px-3 py-1.5 rounded bg-slate-700 text-slate-100 text-xs font-medium hover:bg-slate-600"
+            >
+              Insert link
+            </button>
+          </div>
         </div>
 
         <button

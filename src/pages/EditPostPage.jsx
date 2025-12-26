@@ -1,3 +1,4 @@
+// src/pages/EditPostPage.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
@@ -112,13 +113,12 @@ export default function EditPostPage() {
         updatedAt: serverTimestamp(),
       };
 
-      // If user uploaded a new image this session, use it; otherwise keep currentImageUrl
       if (newImageUrl) {
         updatedData.imageUrl = newImageUrl;
       }
 
       await updateDoc(ref, updatedData);
-      navigate(`/post/${id}`); // or use slug if you want
+      navigate(`/post/${id}`);
     } catch (err) {
       console.error(err);
       setError("Failed to save changes.");
@@ -151,7 +151,9 @@ export default function EditPostPage() {
 
   return (
     <div className="max-w-3xl mx-auto" data-color-mode="dark">
-      <h1 className="text-2xl font-semibold text-white mb-4">Edit post</h1>
+      <h1 className="text-2xl font-semibold text-white mb-4">
+        Edit post
+      </h1>
 
       {error && (
         <div className="mb-3 text-sm text-red-400 bg-red-950/40 border border-red-500/40 px-3 py-2 rounded">
@@ -162,7 +164,9 @@ export default function EditPostPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Title */}
         <div>
-          <label className="block text-sm text-slate-200 mb-1">Title</label>
+          <label className="block text-sm text-slate-200 mb-1">
+            Title
+          </label>
           <input
             type="text"
             value={title}
@@ -190,7 +194,9 @@ export default function EditPostPage() {
 
           {newImageUrl && (
             <div className="mb-2">
-              <p className="text-xs text-slate-400 mb-1">New image uploaded:</p>
+              <p className="text-xs text-slate-400 mb-1">
+                New image uploaded:
+              </p>
               <img
                 src={newImageUrl}
                 alt="New"

@@ -11,6 +11,8 @@ import {
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const PAGE_SIZE = 5;
 
@@ -118,50 +120,87 @@ export default function FeedPage() {
       )}
 
       <div className="space-y-4">
-        {posts.map((post) => (
-          <article
-            key={post.id}
-            className="bg-slate-800 border border-slate-700 rounded-lg p-4 flex gap-4"
-          >
-            {post.imageUrl && (
-              <img
-                src={post.imageUrl}
-                alt={post.title}
-                className="hidden sm:block h-24 w-32 rounded object-cover border border-slate-700"
-              />
-            )}
+        {posts.map((post) => {
+          const previewContent = post.content
+            ? post.content.slice(0, 200)
+            : "";
 
-            <div className="flex-1">
-              <Link
-                to={`/post/${post.slug}`}
-                className="text-lg font-semibold text-emerald-400 hover:underline"
-              >
-                {post.title}
-              </Link>
-
-              <div className="mt-1 text-xs text-slate-400">
-                By {post.authorName || "Unknown"} ·{" "}
-                {formatDate(post.createdAt)}
-              </div>
-
-              <p className="mt-2 text-sm text-slate-200 line-clamp-3">
-                {post.content ? post.content.slice(0, 200) : ""}
-                {post.content && post.content.length > 200 ? "..." : ""}
-              </p>
-
-              {currentUser?.uid === post.authorId && (
-                <div className="mt-3 flex gap-2 text-xs">
-                  <Link
-                    to={`/edit/${post.id}`}
-                    className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-100"
-                  >
-                    Edit
-                  </Link>
-                </div>
+          return (
+            <article
+              key={post.id}
+              className="bg-slate-800 border border-slate-700 rounded-lg p-4 flex gap-4"
+            >
+              {post.imageUrl && (
+                <img
+                  src={post.imageUrl}
+                  alt={post.title}
+                  className="hidden sm:block h-24 w-32 rounded object-cover border border-slate-700"
+                />
               )}
-            </div>
-          </article>
-        ))}
+
+              <div className="flex-1">
+                <Link
+                  to={`/post/${post.slug}`}
+                  className="text-lg font-semibold text-emerald-400 hover:underline"
+                >
+                  {post.title}
+                </Link>
+
+                <div className="mt-1 text-xs text-slate-400">
+                  By {post.authorName || "Unknown"} ·{" "}
+                  {formatDate(post.createdAt)}
+                </div>
+
+                <div className="mt-2 text-sm text-slate-200 line-clamp-3 prose prose-invert max-w-none">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: ({ node, href = "", ...props }) => {
+                        const isExternal =
+                          href.startsWith("http://") ||
+                          href.startsWith("https://") ||
+                          href.startsWith("www.");
+
+                        if (isExternal) {
+                          return (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-400 underline hover:text-emerald-300"
+                              {...props}
+                            />
+                          );
+                        }
+
+                        return (
+                          <a
+                            href={href}
+                            className="text-emerald-400 underline hover:text-emerald-300"
+                            {...props}
+                          />
+                        );
+                      },
+                    }}
+                  >
+                    {previewContent}
+                  </ReactMarkdown>
+                </div>
+
+                {currentUser?.uid === post.authorId && (
+                  <div className="mt-3 flex gap-2 text-xs">
+                    <Link
+                      to={`/edit/${post.id}`}
+                      className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-100"
+                    >
+                      Edit
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </article>
+          );
+        })}
       </div>
 
       {hasMore && (

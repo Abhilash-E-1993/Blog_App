@@ -131,7 +131,37 @@ export default function PostPage() {
       )}
 
       <div className="prose prose-invert max-w-none text-slate-100">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a: ({ node, href = "", ...props }) => {
+              const isExternal =
+                href.startsWith("http://") ||
+                href.startsWith("https://") ||
+                href.startsWith("www.");
+
+              if (isExternal) {
+                return (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 underline hover:text-emerald-300"
+                    {...props}
+                  />
+                );
+              }
+
+              return (
+                <a
+                  href={href}
+                  className="text-emerald-400 underline hover:text-emerald-300"
+                  {...props}
+                />
+              );
+            },
+          }}
+        >
           {post.content || ""}
         </ReactMarkdown>
       </div>
