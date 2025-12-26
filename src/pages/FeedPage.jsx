@@ -1,3 +1,4 @@
+// src/pages/FeedPage.jsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -111,37 +112,54 @@ export default function FeedPage() {
       )}
 
       {posts.length === 0 && !loading && (
-        <p className="text-slate-300">No posts yet. Be the first to write one!</p>
+        <p className="text-slate-300">
+          No posts yet. Be the first to write one!
+        </p>
       )}
 
       <div className="space-y-4">
         {posts.map((post) => (
           <article
             key={post.id}
-            className="bg-slate-800 border border-slate-700 rounded-lg p-4"
+            className="bg-slate-800 border border-slate-700 rounded-lg p-4 flex gap-4"
           >
-            <Link
-              to={`/post/${post.slug}`}
-              className="text-lg font-semibold text-emerald-400 hover:underline"
-            >
-              {post.title}
-            </Link>
-            <div className="mt-1 text-xs text-slate-400">
-              By {post.authorName || "Unknown"} · {formatDate(post.createdAt)}
-            </div>
-            <p className="mt-2 text-sm text-slate-200 line-clamp-3">
-              {post.content}
-            </p>
-            {currentUser?.uid === post.authorId && (
-              <div className="mt-3 flex gap-2 text-xs">
-                <Link
-                  to={`/edit/${post.id}`}
-                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-100"
-                >
-                  Edit
-                </Link>
-              </div>
+            {post.imageUrl && (
+              <img
+                src={post.imageUrl}
+                alt={post.title}
+                className="hidden sm:block h-24 w-32 rounded object-cover border border-slate-700"
+              />
             )}
+
+            <div className="flex-1">
+              <Link
+                to={`/post/${post.slug}`}
+                className="text-lg font-semibold text-emerald-400 hover:underline"
+              >
+                {post.title}
+              </Link>
+
+              <div className="mt-1 text-xs text-slate-400">
+                By {post.authorName || "Unknown"} ·{" "}
+                {formatDate(post.createdAt)}
+              </div>
+
+              <p className="mt-2 text-sm text-slate-200 line-clamp-3">
+                {post.content ? post.content.slice(0, 200) : ""}
+                {post.content && post.content.length > 200 ? "..." : ""}
+              </p>
+
+              {currentUser?.uid === post.authorId && (
+                <div className="mt-3 flex gap-2 text-xs">
+                  <Link
+                    to={`/edit/${post.id}`}
+                    className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-100"
+                  >
+                    Edit
+                  </Link>
+                </div>
+              )}
+            </div>
           </article>
         ))}
       </div>

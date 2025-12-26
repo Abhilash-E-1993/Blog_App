@@ -1,3 +1,4 @@
+// src/pages/PostPage.jsx
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
@@ -11,6 +12,8 @@ import {
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function PostPage() {
   const { slug } = useParams();
@@ -58,6 +61,7 @@ export default function PostPage() {
 
   const handleDelete = async () => {
     if (!post || !currentUser) return;
+
     const confirmDelete = window.confirm("Delete this post permanently?");
     if (!confirmDelete) return;
 
@@ -102,7 +106,10 @@ export default function PostPage() {
         </div>
       )}
 
-      <h1 className="text-3xl font-semibold text-white mb-2">{post.title}</h1>
+      <h1 className="text-3xl font-semibold text-white mb-2">
+        {post.title}
+      </h1>
+
       <div className="text-xs text-slate-400 mb-4">
         By {post.authorName || "Unknown"} ·{" "}
         {formatDate(post.createdAt)}{" "}
@@ -113,9 +120,20 @@ export default function PostPage() {
         )}
       </div>
 
+      {post.imageUrl && (
+        <div className="mb-4">
+          <img
+            src={post.imageUrl}
+            alt={post.title}
+            className="w-full max-h-100 object-cover rounded border border-slate-700"
+          />
+        </div>
+      )}
+
       <div className="prose prose-invert max-w-none text-slate-100">
-        {/* For now render as plain text; later you can use dangerouslySetInnerHTML for HTML content */}
-        <p className="whitespace-pre-line">{post.content}</p>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {post.content || ""}
+        </ReactMarkdown>
       </div>
 
       <div className="mt-6 flex items-center gap-3">

@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
+import MDEditor from "@uiw/react-md-editor";
+import { uploadImageToCloudinary } from "../lib/cloudinary";
 
 function slugify(title) {
   return title
@@ -17,9 +19,39 @@ export default function CreatePostPage() {
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState("Write your post here in **Markdown**.");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUrl, setImageUrl] = useState(""); // final Cloudinary URL
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleUploadImage = async () => {
+    setError("");
+    if (!imageFile) {
+      setError("Please select an image first.");
+      return;
+    }
+    try {
+      setUploadingImage(true);
+      const url = await uploadImageToCloudinary(imageFile);
+      setImageUrl(url);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Image upload failed.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,6 +67,12 @@ export default function CreatePostPage() {
       return;
     }
 
+    // Optional: force user to upload image before publishing
+    // if (!imageUrl) {
+    //   setError("Please upload an image before publishing.");
+    //   return;
+    // }
+
     try {
       setSubmitting(true);
 
@@ -45,8 +83,8 @@ export default function CreatePostPage() {
       await addDoc(collection(db, "posts"), {
         title: title.trim(),
         slug,
-        content: content.trim(),
-        imageUrl: "", // later filled by Cloudinary
+        content: content,
+        imageUrl: imageUrl || "", // Cloudinary URL or empty
         authorId: currentUser.uid,
         authorName: currentUser.displayName || "Unknown",
         createdAt: serverTimestamp(),
@@ -63,7 +101,7 @@ export default function CreatePostPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto" data-color-mode="dark">
       <h1 className="text-2xl font-semibold text-white mb-4">Create new post</h1>
 
       {error && (
@@ -73,6 +111,7 @@ export default function CreatePostPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Title */}
         <div>
           <label className="block text-sm text-slate-200 mb-1">Title</label>
           <input
@@ -84,17 +123,62 @@ export default function CreatePostPage() {
           />
         </div>
 
+        {/* Image upload */}
         <div>
-          <label className="block text-sm text-slate-200 mb-1">Content</label>
-          <textarea
-            rows={8}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            placeholder="Write your post content here..."
-          />
+          <label className="block text-sm text-slate-200 mb-1">
+            Image (one per post)
+          </label>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="text-sm text-slate-200"
+            />
+            <button
+              type="button"
+              onClick={handleUploadImage}
+              disabled={!imageFile || uploadingImage}
+              className="inline-flex items-center justify-center px-3 py-1.5 rounded-md bg-slate-700 text-slate-100 text-xs font-medium hover:bg-slate-600 disabled:opacity-60"
+            >
+              {uploadingImage ? "Uploading..." : "Upload image"}
+            </button>
+          </div>
+
+          {imagePreview && (
+            <div className="mt-2">
+              <p className="text-xs text-slate-400 mb-1">
+                Preview (local file):
+              </p>
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="h-40 w-auto rounded border border-slate-700 object-cover"
+              />
+            </div>
+          )}
+
+          {imageUrl && (
+            <p className="mt-1 text-xs text-emerald-400">
+              Image uploaded successfully.
+            </p>
+          )}
+        </div>
+
+        {/* Markdown editor */}
+        <div>
+          <label className="block text-sm text-slate-200 mb-1">
+            Content (Markdown)
+          </label>
+          <div className="border border-slate-600 rounded bg-slate-900">
+            <MDEditor
+              value={content}
+              onChange={(val) => setContent(val || "")}
+              height={300}
+            />
+          </div>
           <p className="mt-1 text-xs text-slate-400">
-            For now this is plain text; later you can upgrade to markdown or a rich text editor.
+            Supports headings, **bold**, _italic_, lists, links, tables, etc.
           </p>
         </div>
 
