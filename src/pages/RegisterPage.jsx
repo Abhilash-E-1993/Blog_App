@@ -1,12 +1,18 @@
+// src/pages/RegisterPage.jsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+} from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth } from "../lib/firebase";
-import { db } from "../lib/firebase";
+import { auth, db } from "../lib/firebase";
+
+// Optionally, could add more validation (regex) for email etc.
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -43,25 +49,31 @@ export default function RegisterPage() {
     try {
       setSubmitting(true);
 
-      // Create auth user
+      // 1) Create auth user
       const cred = await createUserWithEmailAndPassword(
         auth,
         form.email,
         form.password
       );
 
-      // Send email verification
+      // 2) Send email verification
       await sendEmailVerification(cred.user);
 
-      // Create user document in Firestore
-     await setDoc(doc(db, "users", cred.user.uid), {
-  uid: cred.user.uid,            // required by rules
-  name: form.name,
-  email: form.email,
-  avatarUrl: "",
-  createdAt: serverTimestamp(),
-});
+      // 3) Generate a deterministic avatar URL (Dicebear)
+      const seed = form.email || cred.user.uid;
+      const defaultAvatarUrl =
+        `https://api.dicebear.com/7.x/bottts/png?seed=${encodeURIComponent(
+          seed
+        )}`;
 
+      // 4) Create user document in Firestore
+      await setDoc(doc(db, "users", cred.user.uid), {
+        uid: cred.user.uid,
+        name: form.name,
+        email: form.email,
+        avatarUrl: defaultAvatarUrl,
+        createdAt: serverTimestamp(),
+      });
 
       setSuccess(true);
     } catch (err) {
@@ -80,8 +92,9 @@ export default function RegisterPage() {
             Verify your email
           </h1>
           <p className="text-slate-200 mb-4">
-            We have sent a verification link to <span className="font-semibold">{form.email}</span>. 
-            Please verify your email, then log in.
+            We have sent a verification link to{" "}
+            <span className="font-semibold">{form.email}</span>. Please verify
+            your email, then log in.
           </p>
           <button
             onClick={() => navigate("/login")}
@@ -97,7 +110,9 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900">
       <div className="bg-slate-800 p-6 rounded-lg shadow-md max-w-md w-full">
-        <h1 className="text-2xl font-semibold text-white mb-4">Create account</h1>
+        <h1 className="text-2xl font-semibold text-white mb-4">
+          Create account
+        </h1>
 
         {error && (
           <div className="mb-3 text-sm text-red-400 bg-red-950/40 border border-red-500/40 px-3 py-2 rounded">
@@ -107,7 +122,9 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-sm text-slate-200 mb-1">Name</label>
+            <label className="block text-sm text-slate-200 mb-1">
+              Name
+            </label>
             <input
               type="text"
               name="name"
@@ -119,7 +136,9 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-200 mb-1">Email</label>
+            <label className="block text-sm text-slate-200 mb-1">
+              Email
+            </label>
             <input
               type="email"
               name="email"
@@ -131,7 +150,9 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-200 mb-1">Password</label>
+            <label className="block text-sm text-slate-200 mb-1">
+              Password
+            </label>
             <input
               type="password"
               name="password"

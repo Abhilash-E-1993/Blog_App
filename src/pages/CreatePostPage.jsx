@@ -1,7 +1,13 @@
 // src/pages/CreatePostPage.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import MDEditor from "@uiw/react-md-editor";
@@ -40,7 +46,6 @@ export default function CreatePostPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
 
-  // Simple helper for inserting links into markdown without forcing user to type https://
   const [rawLinkLabel, setRawLinkLabel] = useState("");
   const [rawLinkUrl, setRawLinkUrl] = useState("");
 
@@ -79,9 +84,7 @@ export default function CreatePostPage() {
     const label = rawLinkLabel.trim() || fullUrl;
     const markdownLink = `[${label}](${fullUrl})`;
 
-    setContent((prev) =>
-      prev ? `${prev}\n\n${markdownLink}` : markdownLink
-    );
+    setContent((prev) => (prev ? `${prev}\n\n${markdownLink}` : markdownLink));
     setRawLinkLabel("");
     setRawLinkUrl("");
   };
@@ -103,17 +106,39 @@ export default function CreatePostPage() {
     try {
       setSubmitting(true);
 
+      // 1) Resolve authorName from users collection or email
+      let authorName = "";
+      try {
+        const userRef = doc(db, "users", currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          authorName = userSnap.data().name || "";
+        }
+      } catch (e) {
+        console.warn("Could not read user profile for name:", e);
+      }
+
+      if (!authorName) {
+        authorName =
+          currentUser.displayName ||
+          (currentUser.email
+            ? currentUser.email.split("@")[0]
+            : "Unknown");
+      }
+
+      // 2) Build slug
       const baseSlug = slugify(title);
       const randomSuffix = Math.random().toString(36).slice(2, 7);
       const slug = `${baseSlug}-${randomSuffix}`;
 
+      // 3) Save post
       await addDoc(collection(db, "posts"), {
         title: title.trim(),
         slug,
         content: content,
         imageUrl: imageUrl || "",
         authorId: currentUser.uid,
-        authorName: currentUser.displayName || "Unknown",
+        authorName, // always a real name now
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -142,9 +167,7 @@ export default function CreatePostPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Title */}
         <div>
-          <label className="block text-sm text-slate-200 mb-1">
-            Title
-          </label>
+          <label className="block text-sm text-slate-200 mb-1">Title</label>
           <input
             type="text"
             value={title}
@@ -213,7 +236,7 @@ export default function CreatePostPage() {
           </p>
         </div>
 
-        {/* Optional: quick link inserter */}
+        {/* Quick link inserter */}
         <div className="border border-slate-700 rounded-md p-3 bg-slate-900/60 space-y-2">
           <p className="text-xs text-slate-300">
             Quick link (no need to type https):

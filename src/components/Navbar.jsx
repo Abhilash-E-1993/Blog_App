@@ -1,8 +1,9 @@
+// src/components/Navbar.jsx
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, profile, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -28,7 +29,6 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-4 text-sm">
-          {/* Common links visible only when logged in */}
           {currentUser && (
             <>
               <Link to="/" className={isActive("/")}>
@@ -43,7 +43,6 @@ export default function Navbar() {
             </>
           )}
 
-          {/* Right side: login/register when logged out */}
           {!currentUser && (
             <>
               <Link to="/login" className={isActive("/login")}>
@@ -55,12 +54,22 @@ export default function Navbar() {
             </>
           )}
 
-          {/* Right side: user + logout when logged in */}
-          {currentUser && (
+          {currentUser && profile && (
             <>
-              <span className="text-xs text-slate-400 hidden sm:inline">
-                {currentUser.email}
-              </span>
+              <div className="flex items-center gap-2">
+                {profile.avatarUrl && (
+                  <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-600 bg-slate-800">
+                    <img
+                      src={profile.avatarUrl}
+                      alt={profile.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
+                <span className="text-xs text-slate-200 hidden sm:inline">
+                  {profile.name}
+                </span>
+              </div>
               <button
                 onClick={handleLogout}
                 className="px-3 py-1 rounded-md bg-slate-800 text-slate-100 hover:bg-slate-700 text-xs font-medium"
