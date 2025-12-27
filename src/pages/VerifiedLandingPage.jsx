@@ -1,3 +1,4 @@
+// src/pages/VerifiedLandingPage.jsx
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../lib/firebase";
@@ -16,7 +17,7 @@ export default function VerifiedLandingPage() {
         await reload(currentUser);
         if (currentUser.emailVerified) {
           await getIdToken(currentUser, true);
-          navigate("/", { replace: true });
+          navigate("/feed", { replace: true });
           return;
         }
       }
@@ -26,7 +27,7 @@ export default function VerifiedLandingPage() {
         await reload(user);
         if (user.emailVerified) {
           await getIdToken(user, true);
-          navigate("/", { replace: true });
+          navigate("/feed", { replace: true });
         }
       });
     };

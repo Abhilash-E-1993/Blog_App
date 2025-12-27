@@ -1,3 +1,4 @@
+// src/pages/LoginPage.jsx
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -18,7 +19,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && currentUser && currentUser.emailVerified) {
-      navigate("/", { replace: true });
+      navigate("/feed", { replace: true });
     }
   }, [currentUser, loading, navigate]);
 
@@ -53,7 +54,7 @@ export default function LoginPage() {
         return;
       }
 
-      navigate("/", { replace: true });
+      navigate("/feed", { replace: true });
     } catch (err) {
       console.error(err);
       let message = "Failed to login.";

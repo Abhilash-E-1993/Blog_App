@@ -1,72 +1,83 @@
 // src/App.jsx
 import { Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar";
+
 import FeedPage from "./pages/FeedPage";
 import CreatePostPage from "./pages/CreatePostPage";
 import ProfilePage from "./pages/ProfilePage";
 import PostPage from "./pages/PostPage";
-import EditPostPage from "./pages/EditPostPage";   // <-- add this
+import EditPostPage from "./pages/EditPostPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import VerifiedLandingPage from "./pages/VerifiedLandingPage";
-import ProtectedRoute from "./components/ProtectedRoute";
+import LandingPage from "./pages/LandingPage";
+
+import ProtectedRoute from "./components/ProtectedRoute"; // note: routes folder
+import MainLayout from "./components/MainLayout";
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100">
-      <Navbar />
-      <main className="max-w-5xl mx-auto px-4 py-6">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <FeedPage />
-              </ProtectedRoute>
-            }
-          />
+    <Routes>
+      {/* Public routes WITHOUT navbar */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verified" element={<VerifiedLandingPage />} />
 
-          <Route
-            path="/post/:slug"
-            element={
-              <ProtectedRoute>
-                <PostPage />
-              </ProtectedRoute>
-            }
-          />
+      {/* Protected app routes WITH navbar */}
+      <Route
+        path="/feed"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <FeedPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/edit/:id"                 // <-- this fixes the Edit blank page
-            element={
-              <ProtectedRoute>
-                <EditPostPage />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/post/:slug"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <PostPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/create"
-            element={
-              <ProtectedRoute>
-                <CreatePostPage />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/edit/:id"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <EditPostPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/create"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <CreatePostPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
 
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/verified" element={<VerifiedLandingPage />} />
-        </Routes>
-      </main>
-    </div>
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ProfilePage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }
