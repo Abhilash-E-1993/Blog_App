@@ -1,4 +1,3 @@
-// src/pages/FeedPage.jsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -35,14 +34,14 @@ export default function FeedPage() {
         setLoadingMore(true);
       }
 
-      let q = query(
+      let qRef = query(
         collection(db, "posts"),
         orderBy("createdAt", "desc"),
         limit(PAGE_SIZE)
       );
 
       if (isLoadMore && lastDoc) {
-        q = query(
+        qRef = query(
           collection(db, "posts"),
           orderBy("createdAt", "desc"),
           startAfter(lastDoc),
@@ -50,12 +49,12 @@ export default function FeedPage() {
         );
       }
 
-      const snap = await getDocs(q);
+      const snap = await getDocs(qRef);
 
       if (!snap.empty) {
-        const newPosts = snap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+        const newPosts = snap.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
         }));
 
         setPosts((prev) =>
@@ -125,6 +124,17 @@ export default function FeedPage() {
             ? post.content.slice(0, 200)
             : "";
 
+          const displayName = post.authorName || "Unknown";
+          const createdAtText = formatDate(post.createdAt);
+
+          const avatarUrl =
+            post.authorAvatarUrl ||
+            (post.authorEmail
+              ? `https://api.dicebear.com/7.x/bottts/png?seed=${encodeURIComponent(
+                  post.authorEmail
+                )}`
+              : "");
+
           return (
             <article
               key={post.id}
@@ -139,17 +149,33 @@ export default function FeedPage() {
               )}
 
               <div className="flex-1">
+                {/* author row */}
+                <div className="flex items-center gap-3 mb-1">
+                  {avatarUrl && (
+                    <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-600 bg-slate-800">
+                      <img
+                        src={avatarUrl}
+                        alt={displayName}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium text-slate-100">
+                      {displayName}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {createdAtText}
+                    </span>
+                  </div>
+                </div>
+
                 <Link
                   to={`/post/${post.slug}`}
                   className="text-lg font-semibold text-emerald-400 hover:underline"
                 >
                   {post.title}
                 </Link>
-
-                <div className="mt-1 text-xs text-slate-400">
-                  By {post.authorName || "Unknown"} ·{" "}
-                  {formatDate(post.createdAt)}
-                </div>
 
                 <div className="mt-2 text-sm text-slate-200 line-clamp-3 prose prose-invert max-w-none">
                   <ReactMarkdown

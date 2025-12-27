@@ -13,7 +13,7 @@ import MDEditor from "@uiw/react-md-editor";
 import { uploadImageToCloudinary } from "../lib/cloudinary";
 
 export default function EditPostPage() {
-  const { id } = useParams();
+  const { id } = useParams();            // this is Firestore doc id
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
@@ -21,6 +21,7 @@ export default function EditPostPage() {
   const [content, setContent] = useState("");
   const [postAuthorId, setPostAuthorId] = useState("");
   const [currentImageUrl, setCurrentImageUrl] = useState("");
+  const [slug, setSlug] = useState("");  // NEW: store slug so we can navigate back correctly
 
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
@@ -48,6 +49,7 @@ export default function EditPostPage() {
         setContent(data.content || "");
         setPostAuthorId(data.authorId || "");
         setCurrentImageUrl(data.imageUrl || "");
+        setSlug(data.slug || "");  // capture slug from Firestore
       } catch (err) {
         console.error(err);
         setError("Failed to load post.");
@@ -118,7 +120,14 @@ export default function EditPostPage() {
       }
 
       await updateDoc(ref, updatedData);
-      navigate(`/post/${id}`);
+
+      // IMPORTANT: navigate back using slug route, not id
+      if (slug) {
+        navigate(`/post/${slug}`);
+      } else {
+        // fallback: go home if slug missing for some reason
+        navigate("/");
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to save changes.");
@@ -183,7 +192,9 @@ export default function EditPostPage() {
 
           {currentImageUrl && !newImageUrl && (
             <div className="mb-2">
-              <p className="text-xs text-slate-400 mb-1">Current image:</p>
+              <p className="text-xs text-slate-400 mb-1">
+                Current image:
+              </p>
               <img
                 src={currentImageUrl}
                 alt="Current"

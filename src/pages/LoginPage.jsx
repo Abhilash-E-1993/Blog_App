@@ -1,17 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   signInWithEmailAndPassword,
   sendEmailVerification,
 } from "firebase/auth";
 import { auth } from "../lib/firebase";
+import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { currentUser, loading } = useAuth();
+
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!loading && currentUser && currentUser.emailVerified) {
+      navigate("/", { replace: true });
+    }
+  }, [currentUser, loading, navigate]);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -36,14 +45,15 @@ export default function LoginPage() {
       );
 
       if (!cred.user.emailVerified) {
-        setInfo("Your email is not verified yet. Please verify and try again.");
-        // Optionally send verification again
+        setInfo(
+          "Your email is not verified yet. Please verify and try again."
+        );
         await sendEmailVerification(cred.user);
         await auth.signOut?.();
         return;
       }
 
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (err) {
       console.error(err);
       let message = "Failed to login.";
@@ -57,22 +67,13 @@ export default function LoginPage() {
     }
   };
 
-  const handleResend = async () => {
-    setError("");
-    setInfo("");
-    try {
-      const user = auth.currentUser;
-      if (user && !user.emailVerified) {
-        await sendEmailVerification(user);
-        setInfo("Verification email sent again. Please check your inbox.");
-      } else {
-        setInfo("Please login first with your email and password.");
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Could not resend verification email.");
-    }
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <p className="text-slate-200">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900">
@@ -105,7 +106,9 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-200 mb-1">Password</label>
+            <label className="block text-sm text-slate-200 mb-1">
+              Password
+            </label>
             <input
               type="password"
               name="password"
@@ -127,7 +130,24 @@ export default function LoginPage() {
 
         <button
           type="button"
-          onClick={handleResend}
+          onClick={async () => {
+            setError("");
+            setInfo("");
+            try {
+              const user = auth.currentUser;
+              if (user && !user.emailVerified) {
+                await sendEmailVerification(user);
+                setInfo(
+                  "Verification email sent again. Please check your inbox."
+                );
+              } else {
+                setInfo("Please login first with your email and password.");
+              }
+            } catch (err) {
+              console.error(err);
+              setError("Could not resend verification email.");
+            }
+          }}
           className="mt-3 text-sm text-emerald-400 hover:underline"
         >
           Resend verification email

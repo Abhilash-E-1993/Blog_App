@@ -1,4 +1,3 @@
-// src/pages/CreatePostPage.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -31,7 +30,7 @@ function normalizeUrl(url) {
 }
 
 export default function CreatePostPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, profile } = useAuth();
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
@@ -106,7 +105,6 @@ export default function CreatePostPage() {
     try {
       setSubmitting(true);
 
-      // 1) Resolve authorName from users collection or email
       let authorName = "";
       try {
         const userRef = doc(db, "users", currentUser.uid);
@@ -126,19 +124,22 @@ export default function CreatePostPage() {
             : "Unknown");
       }
 
-      // 2) Build slug
       const baseSlug = slugify(title);
       const randomSuffix = Math.random().toString(36).slice(2, 7);
       const slug = `${baseSlug}-${randomSuffix}`;
 
-      // 3) Save post
+      const authorEmail = profile?.email || currentUser.email || "";
+      const authorAvatarUrl = profile?.avatarUrl || "";
+
       await addDoc(collection(db, "posts"), {
         title: title.trim(),
         slug,
-        content: content,
+        content,
         imageUrl: imageUrl || "",
         authorId: currentUser.uid,
-        authorName, // always a real name now
+        authorName,
+        authorEmail,
+        authorAvatarUrl,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

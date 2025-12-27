@@ -27,6 +27,12 @@ export default function PostPage() {
 
   useEffect(() => {
     const fetchPost = async () => {
+      if (!slug) {
+        setPost(null);
+        setLoading(false);
+        return;
+      }
+
       try {
         const q = query(
           collection(db, "posts"),
@@ -55,8 +61,12 @@ export default function PostPage() {
 
   const formatDate = (ts) => {
     if (!ts) return "";
-    const date = ts.toDate ? ts.toDate() : ts;
-    return date.toLocaleString();
+    try {
+      const date = ts.toDate ? ts.toDate() : ts;
+      return date instanceof Date ? date.toLocaleString() : "";
+    } catch {
+      return "";
+    }
   };
 
   const handleDelete = async () => {
@@ -111,8 +121,7 @@ export default function PostPage() {
       </h1>
 
       <div className="text-xs text-slate-400 mb-4">
-        By {post.authorName || "Unknown"} ·{" "}
-        {formatDate(post.createdAt)}{" "}
+        By {post.authorName || "Unknown"} · {formatDate(post.createdAt)}{" "}
         {post.updatedAt && (
           <span className="italic">
             (updated {formatDate(post.updatedAt)})

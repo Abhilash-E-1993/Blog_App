@@ -1,4 +1,3 @@
-// src/pages/RegisterPage.jsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -7,8 +6,6 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
-
-// Optionally, could add more validation (regex) for email etc.
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -49,24 +46,18 @@ export default function RegisterPage() {
     try {
       setSubmitting(true);
 
-      // 1) Create auth user
       const cred = await createUserWithEmailAndPassword(
         auth,
         form.email,
         form.password
       );
 
-      // 2) Send email verification
-      await sendEmailVerification(cred.user);
-
-      // 3) Generate a deterministic avatar URL (Dicebear)
       const seed = form.email || cred.user.uid;
       const defaultAvatarUrl =
         `https://api.dicebear.com/7.x/bottts/png?seed=${encodeURIComponent(
           seed
         )}`;
 
-      // 4) Create user document in Firestore
       await setDoc(doc(db, "users", cred.user.uid), {
         uid: cred.user.uid,
         name: form.name,
@@ -74,6 +65,12 @@ export default function RegisterPage() {
         avatarUrl: defaultAvatarUrl,
         createdAt: serverTimestamp(),
       });
+
+      const actionCodeSettings = {
+        url: `${window.location.origin}/verified`,
+        handleCodeInApp: false,
+      };
+      await sendEmailVerification(cred.user, actionCodeSettings);
 
       setSuccess(true);
     } catch (err) {
@@ -93,8 +90,8 @@ export default function RegisterPage() {
           </h1>
           <p className="text-slate-200 mb-4">
             We have sent a verification link to{" "}
-            <span className="font-semibold">{form.email}</span>. Please verify
-            your email, then log in.
+            <span className="font-semibold">{form.email}</span>. After you
+            verify, you will be redirected to the app.
           </p>
           <button
             onClick={() => navigate("/login")}
@@ -122,9 +119,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-sm text-slate-200 mb-1">
-              Name
-            </label>
+            <label className="block text-sm text-slate-200 mb-1">Name</label>
             <input
               type="text"
               name="name"
@@ -136,9 +131,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-200 mb-1">
-              Email
-            </label>
+            <label className="block text-sm text-slate-200 mb-1">Email</label>
             <input
               type="email"
               name="email"

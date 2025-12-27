@@ -1,4 +1,3 @@
-// src/pages/ProfilePage.jsx
 import { useEffect, useState } from "react";
 import {
   doc,
@@ -14,13 +13,13 @@ import { useAuth } from "../context/AuthContext";
 import { uploadImageToCloudinary } from "../lib/cloudinary";
 
 export default function ProfilePage() {
-  const { currentUser } = useAuth();
+  const { currentUser, profile, setProfile } = useAuth();
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [initialName, setInitialName] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState(profile?.name || "");
+  const [email, setEmail] = useState(profile?.email || "");
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || "");
+  const [initialName, setInitialName] = useState(profile?.name || "");
+  const [loading, setLoading] = useState(!profile);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [error, setError] = useState("");
@@ -32,33 +31,55 @@ export default function ProfilePage() {
   useEffect(() => {
     const loadProfile = async () => {
       if (!currentUser) return;
+      if (profile) {
+        setName(profile.name);
+        setInitialName(profile.name);
+        setEmail(profile.email);
+        setAvatarUrl(profile.avatarUrl);
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
         setError("");
         setInfo("");
 
-        setEmail(currentUser.email || "");
-
         const ref = doc(db, "users", currentUser.uid);
         const snap = await getDoc(ref);
 
+        const emailVal = currentUser.email || "";
+        const baseName =
+          currentUser.displayName ||
+          (emailVal ? emailVal.split("@")[0] : "");
+
         if (snap.exists()) {
           const data = snap.data();
-          const userName =
-            data.name ||
-            currentUser.displayName ||
-            (currentUser.email ? currentUser.email.split("@")[0] : "");
-          setName(userName);
-          setInitialName(userName);
-          setAvatarUrl(data.avatarUrl || "");
+          const nameVal = data.name || baseName;
+          const avatarVal =
+            data.avatarUrl ||
+            (emailVal
+              ? `https://api.dicebear.com/7.x/bottts/png?seed=${encodeURIComponent(
+                  emailVal
+                )}`
+              : "");
+          setName(nameVal);
+          setInitialName(nameVal);
+          setEmail(emailVal);
+          setAvatarUrl(avatarVal);
+          setProfile({ name: nameVal, avatarUrl: avatarVal, email: emailVal });
         } else {
-          const fallbackName =
-            currentUser.displayName ||
-            (currentUser.email ? currentUser.email.split("@")[0] : "");
-          setName(fallbackName);
-          setInitialName(fallbackName);
-          setAvatarUrl("");
+          const avatarVal =
+            emailVal
+              ? `https://api.dicebear.com/7.x/bottts/png?seed=${encodeURIComponent(
+                  emailVal
+                )}`
+              : "";
+          setName(baseName);
+          setInitialName(baseName);
+          setEmail(emailVal);
+          setAvatarUrl(avatarVal);
+          setProfile({ name: baseName, avatarUrl: avatarVal, email: emailVal });
         }
       } catch (err) {
         console.error(err);
@@ -69,7 +90,7 @@ export default function ProfilePage() {
     };
 
     loadProfile();
-  }, [currentUser]);
+  }, [currentUser, profile, setProfile]);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
@@ -89,11 +110,18 @@ export default function ProfilePage() {
     try {
       setUploadingAvatar(true);
       const url = await uploadImageToCloudinary(avatarFile);
+
       const userRef = doc(db, "users", currentUser.uid);
       await updateDoc(userRef, { avatarUrl: url });
+
       setAvatarUrl(url);
       setAvatarFile(null);
       setAvatarPreview("");
+
+      setProfile((prev) =>
+        prev ? { ...prev, avatarUrl: url } : { name, email, avatarUrl: url }
+      );
+
       setInfo("Avatar updated successfully.");
     } catch (err) {
       console.error(err);
@@ -127,11 +155,9 @@ export default function ProfilePage() {
     try {
       setSaving(true);
 
-      // 1) Update user doc
       const userRef = doc(db, "users", currentUser.uid);
       await updateDoc(userRef, { name: trimmedName });
 
-      // 2) Update all posts by this user
       const postsRef = collection(db, "posts");
       const q = query(postsRef, where("authorId", "==", currentUser.uid));
       const snap = await getDocs(q);
@@ -142,6 +168,11 @@ export default function ProfilePage() {
       await Promise.all(updates);
 
       setInitialName(trimmedName);
+      setProfile((prev) =>
+        prev
+          ? { ...prev, name: trimmedName }
+          : { name: trimmedName, email, avatarUrl }
+      );
       setInfo("Profile and your posts updated successfully.");
     } catch (err) {
       console.error(err);
@@ -159,14 +190,6 @@ export default function ProfilePage() {
     );
   }
 
-  const effectiveAvatar =
-    avatarUrl ||
-    (email
-      ? `https://api.dicebear.com/7.x/bottts/png?seed=${encodeURIComponent(
-          email
-        )}`
-      : "");
-
   return (
     <div className="max-w-md mx-auto">
       <h1 className="text-2xl font-semibold text-white mb-4">Profile</h1>
@@ -183,12 +206,12 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Avatar section */}
+      {/* Avatar */}
       <div className="flex items-center gap-4 mb-6">
         <div className="h-16 w-16 rounded-full overflow-hidden border border-slate-600 bg-slate-800 flex items-center justify-center">
-          {effectiveAvatar ? (
+          {avatarUrl ? (
             <img
-              src={effectiveAvatar}
+              src={avatarUrl}
               alt={name || email}
               className="h-full w-full object-cover"
             />

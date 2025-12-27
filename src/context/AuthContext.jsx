@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
@@ -69,7 +68,7 @@ export function AuthProvider({ children }) {
   const value = {
     currentUser,
     profile,
-    setProfile, // so ProfilePage can update context
+    setProfile,
     loading,
     logout,
   };
