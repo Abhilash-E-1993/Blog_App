@@ -30,7 +30,7 @@ export default function Navbar() {
         <div className="flex items-center gap-4 text-sm">
           {currentUser && (
             <>
-              <Link to="/" className={isActive("/")}>
+              <Link to="/feed" className={isActive("/")}>
                 Home
               </Link>
               <Link to="/create" className={isActive("/create")}>

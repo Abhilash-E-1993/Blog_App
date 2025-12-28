@@ -78,7 +78,7 @@ export default function PostPage() {
     try {
       setDeleting(true);
       await deleteDoc(doc(db, "posts", post.id));
-      navigate("/");
+      navigate("/feed");
     } catch (err) {
       console.error(err);
       setError("Failed to delete post.");
@@ -99,7 +99,7 @@ export default function PostPage() {
       <div className="max-w-3xl mx-auto">
         <p className="text-slate-300">Post not found.</p>
         <Link
-          to="/"
+          to="/feed"
           className="mt-4 inline-block text-emerald-400 hover:underline text-sm"
         >
           ← Back to feed
@@ -177,7 +177,7 @@ export default function PostPage() {
 
       <div className="mt-6 flex items-center gap-3">
         <Link
-          to="/"
+          to="/feed"
           className="text-sm text-emerald-400 hover:underline"
         >
           ← Back to feed

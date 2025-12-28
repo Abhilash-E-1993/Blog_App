@@ -270,7 +270,7 @@ export default function EditPostPage() {
             {saving ? "Saving..." : "Save changes"}
           </button>
           <Link
-            to="/"
+            to="/feed"
             className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-slate-700 text-slate-100 text-sm hover:bg-slate-600"
           >
             Cancel

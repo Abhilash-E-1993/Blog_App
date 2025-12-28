@@ -35,7 +35,7 @@ export default function CreatePostPage() {
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState(
-    "Write your post here in **Markdown**."
+    ""
   );
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -144,7 +144,7 @@ export default function CreatePostPage() {
         updatedAt: serverTimestamp(),
       });
 
-      navigate("/");
+      navigate("/feed");
     } catch (err) {
       console.error(err);
       setError("Failed to create post. Please try again.");
@@ -220,22 +220,27 @@ export default function CreatePostPage() {
           )}
         </div>
 
-        {/* Markdown editor */}
-        <div>
-          <label className="block text-sm text-slate-200 mb-1">
-            Content (Markdown)
-          </label>
-          <div className="border border-slate-600 rounded bg-slate-900">
-            <MDEditor
-              value={content}
-              onChange={(val) => setContent(val || "")}
-              height={300}
-            />
-          </div>
-          <p className="mt-1 text-xs text-slate-400">
-            Supports headings, **bold**, _italic_, lists, links, tables, etc.
-          </p>
-        </div>
+       {/* Markdown editor */}
+<div>
+  <label className="block text-sm text-slate-200 mb-1">
+    Content (Markdown)
+  </label>
+  <div className="border border-slate-600 rounded bg-slate-900">
+    <MDEditor
+      value={content}
+      onChange={(val) => setContent(val || "")}
+      height={300}
+      textareaProps={{
+        placeholder:
+          "Add your thoughts here",
+      }}
+    />
+  </div>
+  <p className="mt-1 text-xs text-slate-400">
+    Supports headings, **bold**, _italic_, lists, links, tables, etc.
+  </p>
+</div>
+
 
         {/* Quick link inserter */}
         <div className="border border-slate-700 rounded-md p-3 bg-slate-900/60 space-y-2">
