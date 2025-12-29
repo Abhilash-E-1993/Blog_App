@@ -30,11 +30,8 @@ export default function FeedPage() {
     try {
       if (!currentUser) return;
 
-      if (!isLoadMore) {
-        setLoading(true);
-      } else {
-        setLoadingMore(true);
-      }
+      if (!isLoadMore) setLoading(true);
+      else setLoadingMore(true);
 
       let qRef = query(
         collection(db, "posts"),
@@ -88,31 +85,33 @@ export default function FeedPage() {
 
   if (loading && posts.length === 0) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-300 text-sm">Loading your BharatBlog feed...</p>
+          <p className="text-slate-300 text-sm">
+            Loading your BharatBlog feed...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-4">
+    <div className="max-w-3xl mx-auto py-6 sm:py-8 px-4 sm:px-0">
       {/* Header row */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 tracking-tight">
             Your BharatBlog feed
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-md">
             Thoughts, stories and ideas from the people you follow.
           </p>
         </div>
 
         <Link
           to="/create"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-xs sm:text-sm text-white font-medium shadow-md shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-transform"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-xs sm:text-sm text-white font-medium shadow-md shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-transform"
         >
           <span className="text-base leading-none">+</span>
           <span>New post</span>
@@ -143,7 +142,7 @@ export default function FeedPage() {
       )}
 
       {/* Posts list */}
-      <div className="space-y-4">
+      <div className="space-y-4 sm:space-y-5">
         {posts.map((post) => {
           const previewContent = post.content ? post.content.slice(0, 200) : "";
           const displayName = post.authorName || "Unknown";
@@ -169,7 +168,7 @@ export default function FeedPage() {
               {/* subtle top border accent */}
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-orange-500 via-emerald-500 to-sky-500 opacity-60" />
 
-              <div className="p-4 sm:p-5 flex gap-4">
+              <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4">
                 {post.imageUrl && (
                   <Link
                     to={`/post/${post.slug}`}
@@ -179,6 +178,7 @@ export default function FeedPage() {
                       src={thumbUrl}
                       alt={post.title}
                       className="h-full w-full object-cover hover:scale-[1.02] transition-transform"
+                      loading="lazy"
                     />
                   </Link>
                 )}
@@ -187,11 +187,12 @@ export default function FeedPage() {
                   {/* author row */}
                   <div className="flex items-center gap-3 mb-2">
                     {avatarUrl && (
-                      <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-600 bg-slate-800">
+                      <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-600 bg-slate-800 flex-shrink-0">
                         <img
                           src={avatarUrl}
                           alt={displayName}
                           className="h-full w-full object-cover"
+                          loading="lazy"
                         />
                       </div>
                     )}
@@ -251,7 +252,7 @@ export default function FeedPage() {
                   </div>
 
                   {/* edit + read more row */}
-                  <div className="mt-3 flex items-center justify-between text-xs">
+                  <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
                     {currentUser?.uid === post.authorId ? (
                       <div className="flex gap-2">
                         <Link
@@ -269,7 +270,7 @@ export default function FeedPage() {
 
                     <Link
                       to={`/post/${post.slug}`}
-                      className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300"
+                      className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 self-start sm:self-auto"
                     >
                       Read full post →
                     </Link>
