@@ -1,5 +1,5 @@
 // src/pages/UserProfilePage.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   doc,
@@ -65,10 +65,13 @@ export default function UserProfilePage() {
                 )}`
               : "");
 
+          const bio = data.bio || "";
+
           setUserProfile({
             name: baseName,
             email,
             avatarUrl,
+            bio,
           });
         }
       } catch (err) {
@@ -144,6 +147,17 @@ export default function UserProfilePage() {
     }
   };
 
+  const isMe = currentUser?.uid === uid;
+  const totalPosts = useMemo(() => posts.length, [posts]);
+  const totalLikes = useMemo(
+    () =>
+      posts.reduce(
+        (sum, p) => sum + (typeof p.likesCount === "number" ? p.likesCount : 0),
+        0
+      ),
+    [posts]
+  );
+
   if (profileLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -157,7 +171,7 @@ export default function UserProfilePage() {
 
   if (!userProfile) {
     return (
-      <div className="max-w-3xl mx-auto py-8">
+      <div className="max-w-3xl mx-auto py-8 px-4 sm:px-0">
         <div className="rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/70 px-6 py-8">
           <p className="text-slate-200 text-base font-medium mb-2">
             This BharatBlog user profile could not be found.
@@ -176,144 +190,217 @@ export default function UserProfilePage() {
     );
   }
 
-  const isMe = currentUser?.uid === uid;
-
   return (
-    <div className="max-w-3xl mx-auto py-6 px-4 sm:px-0">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 mb-3">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-emerald-300">
-            BharatBlog User
-          </span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 tracking-tight">
-          {userProfile.name}
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          {isMe
-            ? "This is your public profile as seen by other users."
-            : "Public profile on BharatBlog."}
-        </p>
-      </div>
-
-      {/* Profile card */}
-      <div className="mb-6 rounded-3xl bg-slate-950/90 border border-slate-800 p-5 shadow-xl backdrop-blur-xl flex items-start gap-4">
-        <div className="h-20 w-20 rounded-full overflow-hidden border-2 border-emerald-500/60 bg-slate-900 flex items-center justify-center shadow-md shadow-emerald-500/30">
-          {userProfile.avatarUrl ? (
-            <img
-              src={userProfile.avatarUrl}
-              alt={userProfile.name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <span className="text-xs text-slate-400">No avatar</span>
-          )}
-        </div>
-        <div className="flex-1 space-y-1">
-          <p className="text-sm text-slate-100 font-medium">
+    <div className="py-4">
+      {/* top header same style as ProfilePage */}
+      <div className="mb-6 flex items-start justify-between gap-3 max-w-5xl mx-auto px-4 sm:px-0">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 mb-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-emerald-300">
+              BharatBlog Profile
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 tracking-tight">
             {userProfile.name}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            {isMe
+              ? "This is your public creator profile."
+              : "Public creator profile on BharatBlog."}
           </p>
-          {userProfile.email && (
-            <p className="text-xs text-slate-400">{userProfile.email}</p>
-          )}
-
-          {isMe ? (
-            <Link
-              to="/profile"
-              className="inline-flex items-center justify-center px-3 py-1.5 mt-2 rounded-full bg-slate-800 text-slate-100 text-[11px] font-medium hover:bg-slate-700"
-            >
-              Edit your profile
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={handleStartChat}
-              disabled={startingChat}
-              className="inline-flex items-center justify-center px-3 py-1.5 mt-2 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-[11px] font-semibold shadow-md shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105 disabled:opacity-60 disabled:hover:scale-100 transition-all"
-            >
-              {startingChat ? "Starting chat..." : "Message"}
-            </button>
-          )}
         </div>
+
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="hidden sm:inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300 hover:bg-slate-800"
+        >
+          Back
+        </button>
       </div>
 
-      {/* User posts section (same as before) */}
-      <div className="mt-6">
-        <h2 className="text-xl font-semibold text-slate-50 mb-2">
-          Posts by {userProfile.name}
-        </h2>
-        <p className="text-xs text-slate-400 mb-4">
-          All public posts written by this user on BharatBlog.
-        </p>
+      <div className="max-w-5xl mx-auto px-4 sm:px-0 grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1.4fr)] items-start">
+        {/* LEFT: profile card (view-only) */}
+        <section className="relative">
+          <div className="absolute -inset-1 bg-[conic-gradient(from_140deg_at_0%_0%,rgba(16,185,129,0.4),rgba(56,189,248,0.25),rgba(249,115,22,0.4),rgba(16,185,129,0.4))] rounded-3xl blur-2xl opacity-70" />
+          <div className="relative bg-slate-950/90 border border-slate-800 rounded-3xl px-5 py-6 sm:px-6 sm:py-7 shadow-[0_24px_70px_rgba(15,23,42,0.95)] backdrop-blur-2xl flex flex-col gap-6 min-h-[360px]">
+            {/* avatar + name + bio */}
+            <div className="flex items-start gap-4">
+              <div className="relative">
+                <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-3xl overflow-hidden border-2 border-emerald-400/70 bg-slate-900 flex items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.5)]">
+                  {userProfile.avatarUrl ? (
+                    <img
+                      src={userProfile.avatarUrl}
+                      alt={userProfile.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs text-slate-400">
+                      {userProfile.name?.[0]?.toUpperCase() || "U"}
+                    </span>
+                  )}
+                </div>
+              </div>
 
-        {postsLoading && (
-          <div className="flex items-center gap-2 text-sm text-slate-300">
-            <div className="w-5 h-5 border-2 border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
-            <span>Loading posts...</span>
-          </div>
-        )}
+              <div className="flex-1 space-y-1 min-w-0">
+                <h2 className="text-lg sm:text-xl font-semibold text-slate-50 truncate">
+                  {userProfile.name}
+                </h2>
+                {userProfile.email && (
+                  <p className="text-xs text-slate-400 break-all">
+                    {userProfile.email}
+                  </p>
+                )}
 
-        {postsError && !postsLoading && (
-          <div className="mb-3 text-sm text-red-400 bg-red-950/40 border border-red-500/40 px-3 py-2 rounded-lg">
-            {postsError}
-          </div>
-        )}
+                <div className="mt-3 text-xs text-slate-200 leading-relaxed max-h-32 overflow-y-auto">
+                  {userProfile.bio ? (
+                    <div className="prose prose-invert prose-p:mb-1 max-w-none text-xs">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {userProfile.bio}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="text-slate-500">
+                      This creator has not added a bio yet.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
 
-        {!postsLoading && !postsError && posts.length === 0 && (
-          <div className="mt-3 rounded-2xl border border-dashed border-slate-700/70 bg-slate-900/60 px-4 py-6 text-center">
-            <p className="text-slate-200 text-sm font-medium mb-1">
-              No posts yet.
-            </p>
-            <p className="text-slate-400 text-xs mb-3">
-              This user has not published any BharatBlog posts yet.
-            </p>
-          </div>
-        )}
+            {/* stats + actions */}
+            <div className="grid grid-cols-3 gap-3 rounded-2xl bg-slate-900/70 border border-slate-800 px-3 py-3 text-center text-xs sm:text-sm">
+              <div>
+                <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide">
+                  Posts
+                </p>
+                <p className="text-base sm:text-lg font-semibold text-slate-50">
+                  {totalPosts}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide">
+                  Likes
+                </p>
+                <p className="text-base sm:text-lg font-semibold text-emerald-400">
+                  {totalLikes}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide">
+                  Type
+                </p>
+                <p className="text-base sm:text-lg font-semibold text-slate-50">
+                  Author
+                </p>
+              </div>
+            </div>
 
-        {!postsLoading && !postsError && posts.length > 0 && (
-          <div className="mt-3 space-y-4">
-            {posts.map((post) => {
-              const previewContent = post.content
-                ? post.content.slice(0, 150)
-                : "";
-              const createdAt = post.createdAt;
-              const date = createdAt?.toDate ? createdAt.toDate() : createdAt;
-              const createdAtText =
-                date instanceof Date ? date.toLocaleString() : "";
-
-              const thumbUrl = post.imageUrl
-                ? getOptimizedImageUrl(post.imageUrl, { width: 400 })
-                : "";
-
-              return (
-                <article
-                  key={post.id}
-                  className="relative overflow-hidden rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 transition-colors shadow-sm shadow-black/30"
+            {/* CTA */}
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] text-slate-500">
+                View this creator&apos;s stories on the right.
+              </p>
+              {isMe ? (
+                <Link
+                  to="/profile"
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-slate-800 text-slate-100 text-[11px] font-medium hover:bg-slate-700"
                 >
-                  <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500 via-sky-500 to-emerald-500 opacity-60" />
+                  Edit your profile
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleStartChat}
+                  disabled={startingChat}
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-[11px] font-semibold shadow-md shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105 disabled:opacity-60 disabled:hover:scale-100 transition-all"
+                >
+                  {startingChat ? "Starting chat..." : "Message"}
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
 
-                  <div className="p-4 flex flex-col sm:flex-row gap-4">
+        {/* RIGHT: posts list */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-50">
+                Posts by {userProfile.name}
+              </h2>
+              <p className="text-xs text-slate-400">
+                All public posts written by this user.
+              </p>
+            </div>
+          </div>
+
+          {postsLoading && (
+            <div className="flex items-center gap-2 text-sm text-slate-300">
+              <div className="w-5 h-5 border-2 border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
+              <span>Loading posts...</span>
+            </div>
+          )}
+
+          {postsError && !postsLoading && (
+            <div className="mb-3 text-sm text-red-400 bg-red-950/40 border border-red-500/40 px-3 py-2 rounded-lg">
+              {postsError}
+            </div>
+          )}
+
+          {!postsLoading && !postsError && posts.length === 0 && (
+            <div className="mt-2 rounded-2xl border border-dashed border-slate-700/70 bg-slate-900/60 px-4 py-6 text-center">
+              <p className="text-slate-200 text-sm font-medium mb-1">
+                No posts yet.
+              </p>
+              <p className="text-slate-400 text-xs mb-3">
+                This user has not published any BharatBlog posts yet.
+              </p>
+            </div>
+          )}
+
+          {!postsLoading && !postsError && posts.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {posts.map((post) => {
+                const previewContent = post.content
+                  ? post.content.slice(0, 130)
+                  : "";
+                const createdAt = post.createdAt;
+                const date = createdAt?.toDate ? createdAt.toDate() : createdAt;
+                const createdAtText =
+                  date instanceof Date ? date.toLocaleDateString() : "";
+
+                const thumbUrl = post.imageUrl
+                  ? getOptimizedImageUrl(post.imageUrl, { width: 500 })
+                  : "";
+
+                return (
+                  <article
+                    key={post.id}
+                    className="group relative overflow-hidden rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-emerald-500/60 shadow-[0_10px_26px_rgba(15,23,42,0.9)] transition-all duration-300 hover:-translate-y-1 flex flex-col"
+                  >
+                    <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500 via-sky-500 to-emerald-500 opacity-70" />
+
                     {post.imageUrl && (
                       <Link
                         to={`/post/${post.slug}`}
-                        className="hidden sm:block h-20 w-28 rounded-xl overflow-hidden border border-slate-700 flex-shrink-0"
+                        className="block h-24 w-full overflow-hidden"
                       >
                         <img
                           src={thumbUrl}
                           alt={post.title}
-                          className="h-full w-full object-cover hover:scale-[1.02] transition-transform"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
                           loading="lazy"
                         />
                       </Link>
                     )}
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="p-4 flex flex-col gap-2 flex-1">
+                      <div className="flex items-start justify-between gap-2">
                         <Link
                           to={`/post/${post.slug}`}
-                          className="inline-block text-sm sm:text-base font-semibold text-emerald-400 hover:text-emerald-300 hover:underline line-clamp-2"
+                          className="inline-block text-sm font-semibold text-slate-50 hover:text-emerald-300 hover:underline line-clamp-2"
                         >
                           {post.title}
                         </Link>
@@ -322,13 +409,27 @@ export default function UserProfilePage() {
                         </span>
                       </div>
 
-                      <div className="mt-1 text-xs text-slate-200 line-clamp-3 prose prose-invert max-w-none">
+                      <div className="text-[11px] text-slate-300 line-clamp-3 prose prose-invert max-w-none">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {previewContent}
                         </ReactMarkdown>
                       </div>
 
-                      <div className="mt-2 flex items-center justify-end gap-2 text-[11px]">
+                      <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+                        <div className="inline-flex items-center gap-2">
+                          {typeof post.likesCount === "number" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-800/80 px-2 py-0.5 text-slate-300">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                              {post.likesCount} likes
+                            </span>
+                          )}
+                          {post.category && (
+                            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-slate-800/80 text-slate-300">
+                              {post.category}
+                            </span>
+                          )}
+                        </div>
+
                         <Link
                           to={`/post/${post.slug}`}
                           className="text-emerald-400 hover:text-emerald-300"
@@ -337,12 +438,12 @@ export default function UserProfilePage() {
                         </Link>
                       </div>
                     </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

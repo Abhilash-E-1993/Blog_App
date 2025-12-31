@@ -1,5 +1,5 @@
 // src/pages/ChatsListPage.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { subscribeToConversations } from "../lib/chat";
@@ -11,14 +11,33 @@ export default function ChatsListPage() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  // newest chats on top
+  const sortedConversations = useMemo(() => {
+    return [...conversations].sort((a, b) => {
+      const tsA = a.lastMessage?.createdAt;
+      const tsB = b.lastMessage?.createdAt;
+      const dA = tsA?.toDate ? tsA.toDate() : tsA;
+      const dB = tsB?.toDate ? tsB.toDate() : tsB;
+      const tA = dA instanceof Date ? dA.getTime() : 0;
+      const tB = dB instanceof Date ? dB.getTime() : 0;
+      return tB - tA;
+    });
+  }, [conversations]);
+
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setLoading(false);
+      setConversations([]);
+      return;
+    }
 
     setLoading(true);
+    setError("");
+
     const unsub = subscribeToConversations(
       currentUser.uid,
       (convs) => {
-        setConversations(convs);
+        setConversations(Array.isArray(convs) ? convs : []);
         setLoading(false);
       },
       (err) => {
@@ -28,10 +47,13 @@ export default function ChatsListPage() {
       }
     );
 
-    return () => unsub && unsub();
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
   }, [currentUser?.uid]);
 
   const handleOpenChat = (convId) => {
+    if (!convId) return;
     navigate(`/chat/${convId}`);
   };
 
@@ -48,9 +70,16 @@ export default function ChatsListPage() {
 
   return (
     <div className="max-w-2xl mx-auto py-6 px-4 sm:px-0">
-      <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 mb-2">
-        Chats
-      </h1>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-50">Chats</h1>
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300 hover:bg-slate-800"
+        >
+          Back
+        </button>
+      </div>
+
       <p className="text-xs sm:text-sm text-slate-400 mb-4">
         Your ongoing conversations on BharatBlog.
       </p>
@@ -61,7 +90,7 @@ export default function ChatsListPage() {
         </div>
       )}
 
-      {conversations.length === 0 && !error && (
+      {sortedConversations.length === 0 && !error && (
         <div className="mt-4 rounded-2xl border border-dashed border-slate-700/70 bg-slate-900/60 px-4 py-6 text-center">
           <p className="text-slate-200 text-sm font-medium mb-1">
             No chats yet.
@@ -78,13 +107,13 @@ export default function ChatsListPage() {
         </div>
       )}
 
-      {conversations.length > 0 && (
+      {sortedConversations.length > 0 && (
         <div className="mt-3 rounded-3xl bg-slate-950/90 border border-slate-800 shadow-md shadow-black/30 divide-y divide-slate-800">
-          {conversations.map((conv) => {
+          {sortedConversations.map((conv) => {
             const participants = conv.participants || [];
-            const otherUid = participants.find(
-              (uid) => uid !== currentUser.uid
-            );
+            const otherUid = currentUser
+              ? participants.find((uid) => uid !== currentUser.uid)
+              : null;
 
             const info =
               conv.participantInfo && otherUid
@@ -95,57 +124,85 @@ export default function ChatsListPage() {
             const otherAvatar = info?.avatarUrl || "";
             const last = conv.lastMessage || null;
 
-            const lastText = last?.text || "Say hi and start the conversation.";
+            const lastText =
+              last?.text || "Say hi and start the conversation.";
             const lastTime = formatLastTime(last?.createdAt);
 
             const unreadFor = Array.isArray(conv.unreadFor)
               ? conv.unreadFor
               : [];
-            const hasUnread = unreadFor.includes(currentUser.uid);
+            const hasUnread =
+              currentUser && unreadFor.includes(currentUser.uid);
 
             return (
               <button
                 key={conv.id}
                 onClick={() => handleOpenChat(conv.id)}
-                className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-slate-900 transition-colors"
+                className={`
+                  group w-full px-4 py-3 flex items-center justify-between gap-3
+                  transition-all duration-150
+                  bg-transparent
+                  hover:bg-slate-900/80
+                  hover:-translate-y-[1px]
+                  hover:shadow-[0_6px_18px_rgba(15,23,42,0.85)]
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500
+                `}
               >
-                <div className="flex items-center gap-3">
-                  {otherAvatar ? (
-                    <img
-                      src={otherAvatar}
-                      alt={otherName}
-                      className="h-9 w-9 rounded-full border border-emerald-500/50 object-cover"
-                    />
-                  ) : (
-                    <div className="h-9 w-9 rounded-full border border-emerald-500/50 bg-slate-800 flex items-center justify-center text-[11px] text-slate-200">
-                      {otherName[0] || "U"}
-                    </div>
-                  )}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`
+                      relative h-9 w-9 rounded-full border object-cover flex-shrink-0
+                      border-slate-700
+                      group-hover:border-emerald-400/70
+                      transition-colors duration-150
+                    `}
+                  >
+                    {otherAvatar ? (
+                      <img
+                        src={otherAvatar}
+                        alt={otherName}
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full rounded-full bg-slate-800 flex items-center justify-center text-[11px] text-slate-200">
+                        {otherName[0] || "U"}
+                      </div>
+                    )}
+                  </div>
 
-                  <div className="flex flex-col items-start">
-                    <span className="text-sm font-medium text-slate-100">
+                  <div className="flex flex-col items-start min-w-0">
+                    <span
+                      className={`
+                        text-sm font-medium truncate max-w-[160px] sm:max-w-[220px]
+                        ${hasUnread ? "text-slate-50" : "text-slate-100"}
+                      `}
+                    >
                       {otherName}
                     </span>
                     <span
-                      className={`text-[11px] line-clamp-1 max-w-[180px] sm:max-w-[260px] ${
-                        hasUnread
-                          ? "text-slate-100 font-semibold"
-                          : "text-slate-400"
-                      }`}
+                      className={`
+                        text-[11px] line-clamp-1 max-w-[180px] sm:max-w-[260px]
+                        transition-colors duration-150
+                        ${
+                          hasUnread
+                            ? "text-slate-100 font-semibold"
+                            : "text-slate-400 group-hover:text-slate-200"
+                        }
+                      `}
                     >
                       {lastText}
                     </span>
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
                   {lastTime && (
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-500 group-hover:text-slate-300 transition-colors duration-150">
                       {lastTime}
                     </span>
                   )}
                   {hasUnread && (
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
                   )}
                 </div>
               </button>
@@ -160,8 +217,9 @@ export default function ChatsListPage() {
 function formatLastTime(ts) {
   if (!ts) return "";
   try {
-    const d = ts.toDate ? ts.toDate() : ts;
+    const d = ts.toDate ? ts.toDate() : ts; // Firestore Timestamp -> Date [web:420]
     if (!(d instanceof Date)) return "";
+
     const now = new Date();
     const sameDay =
       d.getDate() === now.getDate() &&
