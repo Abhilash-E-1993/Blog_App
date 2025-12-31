@@ -12,11 +12,15 @@ const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const VerifiedLandingPage = lazy(() => import("./pages/VerifiedLandingPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
-const UserProfilePage = lazy(() => import("./pages/UserProfilePage")); // NEW
+const UserProfilePage = lazy(() => import("./pages/UserProfilePage"));
+const SearchAccountsPage = lazy(() => import("./pages/SearchAccountsPage"));
+const ChatsListPage = lazy(() => import("./pages/ChatsListPage"));
+const ChatPage = lazy(() => import("./pages/ChatPage"));
 
 // Non‑lazy components
 import ProtectedRoute from "./components/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
+import ChatLayout from "./pages/ChatLayout";
 
 export default function App() {
   return (
@@ -93,7 +97,18 @@ export default function App() {
           }
         />
 
-        {/* NEW: public profile for any user */}
+        <Route
+          path="/search"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <SearchAccountsPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Public profile for any user (still behind auth) */}
         <Route
           path="/u/:uid"
           element={
@@ -101,6 +116,30 @@ export default function App() {
               <MainLayout>
                 <UserProfilePage />
               </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Chats list WITH navbar */}
+        <Route
+          path="/chats"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ChatsListPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Single chat WITHOUT navbar – full immersive chat */}
+        <Route
+          path="/chat/:conversationId"
+          element={
+            <ProtectedRoute>
+              <ChatLayout>
+                <ChatPage />
+              </ChatLayout>
             </ProtectedRoute>
           }
         />

@@ -4,12 +4,16 @@ import {
   PenSquare,
   UserCircle,
   LogOut,
+  Search,
+  MessageCircle,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useChatUnread } from "../context/ChatUnreadContext";
 
 export default function Navbar() {
   const { currentUser, profile, logout } = useAuth();
+  const { unreadCount } = useChatUnread();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -38,13 +42,12 @@ export default function Navbar() {
       <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-2xl border-b border-slate-800/50 shadow-xl">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
-            {/* Left: BharatBlog brand */}
+            {/* Left: brand */}
             <button
               type="button"
               onClick={() => navigate("/feed")}
               className="flex items-center gap-3 group"
             >
-              {/* Clean tricolor chip (no complex icon) */}
               <div className="relative h-9 w-9 flex items-center justify-center">
                 <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-orange-500/30 via-white/10 to-green-500/30 blur-md group-hover:blur-lg transition-all duration-500" />
                 <div className="relative h-full w-full rounded-full bg-slate-950 border border-slate-700 flex items-center justify-center shadow-md">
@@ -62,21 +65,18 @@ export default function Navbar() {
               </div>
             </button>
 
-            {/* Right: navigation + profile */}
+            {/* Right */}
             <div className="flex items-center gap-2">
               {currentUser ? (
                 <>
                   {/* Feed */}
                   <Link
                     to="/feed"
-                    className={`
-                      group relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300
-                      ${
-                        isActive("/feed")
-                          ? "text-orange-400 bg-orange-500/10 border border-orange-500/30 shadow-lg shadow-orange-500/20"
-                          : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/50 border border-transparent"
-                      }
-                    `}
+                    className={`group relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                      isActive("/feed")
+                        ? "text-orange-400 bg-orange-500/10 border border-orange-500/30 shadow-lg shadow-orange-500/20"
+                        : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/50 border border-transparent"
+                    }`}
                   >
                     <span className="flex items-center gap-2">
                       <Home
@@ -96,14 +96,11 @@ export default function Navbar() {
                   {/* Create */}
                   <Link
                     to="/create"
-                    className={`
-                      group relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300
-                      ${
-                        isActive("/create")
-                          ? "text-green-400 bg-green-500/10 border border-green-500/30 shadow-lg shadow-green-500/20"
-                          : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/50 border border-transparent"
-                      }
-                    `}
+                    className={`group relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                      isActive("/create")
+                        ? "text-green-400 bg-green-500/10 border border-green-500/30 shadow-lg shadow-green-500/20"
+                        : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/50 border border-transparent"
+                    }`}
                   >
                     <span className="flex items-center gap-2">
                       <PenSquare
@@ -120,17 +117,69 @@ export default function Navbar() {
                     )}
                   </Link>
 
+                  {/* Search */}
+                  <Link
+                    to="/search"
+                    className={`group relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                      isActive("/search")
+                        ? "text-violet-400 bg-violet-500/10 border border-violet-500/30 shadow-lg shadow-violet-500/20"
+                        : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/50 border border-transparent"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Search
+                        className={`h-4 w-4 ${
+                          isActive("/search")
+                            ? "animate-pulse"
+                            : "group-hover:scale-110 transition-transform"
+                        }`}
+                      />
+                      <span className="hidden sm:inline">Search</span>
+                    </span>
+                    {isActive("/search") && (
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-0.5 w-6 bg-gradient-to-r from-orange-500 to-green-500 rounded-full" />
+                    )}
+                  </Link>
+
+                  {/* Chats with unread badge */}
+                  <Link
+                    to="/chats"
+                    className={`group relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                      isActive("/chats")
+                        ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 shadow-lg shadow-emerald-500/20"
+                        : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/50 border border-transparent"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <div className="relative">
+                        <MessageCircle
+                          className={`h-4 w-4 ${
+                            isActive("/chats")
+                              ? "animate-pulse"
+                              : "group-hover:scale-110 transition-transform"
+                          }`}
+                        />
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 min-h-[14px] min-w-[14px] px-1 rounded-full bg-red-500 text-[9px] leading-[14px] text-white flex items-center justify-center">
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <span className="hidden sm:inline">Chats</span>
+                    </span>
+                    {isActive("/chats") && (
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-0.5 w-6 bg-gradient-to-r from-orange-500 to-green-500 rounded-full" />
+                    )}
+                  </Link>
+
                   {/* Profile */}
                   <Link
                     to="/profile"
-                    className={`
-                      group relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300
-                      ${
-                        isActive("/profile")
-                          ? "text-sky-400 bg-sky-500/10 border border-sky-500/30 shadow-lg shadow-sky-500/20"
-                          : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/50 border border-transparent"
-                      }
-                    `}
+                    className={`group relative px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                      isActive("/profile")
+                        ? "text-sky-400 bg-sky-500/10 border border-sky-500/30 shadow-lg shadow-sky-500/20"
+                        : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/50 border border-transparent"
+                    }`}
                   >
                     <span className="flex items-center gap-2">
                       <UserCircle
@@ -150,7 +199,7 @@ export default function Navbar() {
                   {/* Divider */}
                   <div className="hidden sm:block h-8 w-px bg-slate-700/50 mx-2" />
 
-                  {/* User profile chip */}
+                  {/* User chip */}
                   {profile && (
                     <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 hover:bg-slate-800 transition-colors">
                       <div className="relative h-8 w-8 rounded-full overflow-hidden border-2 border-orange-500/30 bg-slate-800 group">
@@ -183,7 +232,6 @@ export default function Navbar() {
                 </>
               ) : (
                 <>
-                  {/* Login */}
                   <Link
                     to="/login"
                     className="px-4 py-2 rounded-xl text-slate-300 hover:text-slate-100 font-medium text-sm transition-colors"
@@ -191,7 +239,6 @@ export default function Navbar() {
                     Login
                   </Link>
 
-                  {/* Register */}
                   <Link
                     to="/register"
                     className="group relative px-5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold text-sm shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 overflow-hidden"

@@ -3,14 +3,17 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
-import "./index.css"; // or ./styles/global.css if you use that
+import "./index.css";
 import { AuthProvider } from "./context/AuthContext.jsx";
+import { ChatUnreadProvider } from "./context/ChatUnreadContext.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <ChatUnreadProvider>
+          <App />
+        </ChatUnreadProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

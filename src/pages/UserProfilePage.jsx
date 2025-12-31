@@ -1,6 +1,6 @@
 // src/pages/UserProfilePage.jsx
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   doc,
   getDoc,
@@ -15,10 +15,12 @@ import { useAuth } from "../context/AuthContext";
 import { getOptimizedImageUrl } from "../lib/cloudinary";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { findOrCreateConversation } from "../lib/chat";
 
 export default function UserProfilePage() {
   const { uid } = useParams();
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
 
   const [userProfile, setUserProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -27,6 +29,8 @@ export default function UserProfilePage() {
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsError, setPostsError] = useState("");
+
+  const [startingChat, setStartingChat] = useState(false);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -119,6 +123,27 @@ export default function UserProfilePage() {
     fetchUserPosts();
   }, [uid]);
 
+  const handleStartChat = async () => {
+    if (!currentUser || !uid || startingChat || !userProfile) return;
+
+    try {
+      setStartingChat(true);
+
+      const otherUser = {
+        uid,
+        name: userProfile.name,
+        avatarUrl: userProfile.avatarUrl || "",
+      };
+
+      const conv = await findOrCreateConversation(currentUser, otherUser);
+      navigate(`/chat/${conv.id}`);
+    } catch (err) {
+      console.error("Failed to start chat:", err);
+    } finally {
+      setStartingChat(false);
+    }
+  };
+
   if (profileLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -155,7 +180,7 @@ export default function UserProfilePage() {
 
   return (
     <div className="max-w-3xl mx-auto py-6 px-4 sm:px-0">
-      {/* Header profile card */}
+      {/* Header */}
       <div className="mb-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 mb-3">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -173,6 +198,7 @@ export default function UserProfilePage() {
         </p>
       </div>
 
+      {/* Profile card */}
       <div className="mb-6 rounded-3xl bg-slate-950/90 border border-slate-800 p-5 shadow-xl backdrop-blur-xl flex items-start gap-4">
         <div className="h-20 w-20 rounded-full overflow-hidden border-2 border-emerald-500/60 bg-slate-900 flex items-center justify-center shadow-md shadow-emerald-500/30">
           {userProfile.avatarUrl ? (
@@ -192,18 +218,28 @@ export default function UserProfilePage() {
           {userProfile.email && (
             <p className="text-xs text-slate-400">{userProfile.email}</p>
           )}
-          {isMe && (
+
+          {isMe ? (
             <Link
               to="/profile"
               className="inline-flex items-center justify-center px-3 py-1.5 mt-2 rounded-full bg-slate-800 text-slate-100 text-[11px] font-medium hover:bg-slate-700"
             >
               Edit your profile
             </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={handleStartChat}
+              disabled={startingChat}
+              className="inline-flex items-center justify-center px-3 py-1.5 mt-2 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-[11px] font-semibold shadow-md shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105 disabled:opacity-60 disabled:hover:scale-100 transition-all"
+            >
+              {startingChat ? "Starting chat..." : "Message"}
+            </button>
           )}
         </div>
       </div>
 
-      {/* User's posts */}
+      {/* User posts section (same as before) */}
       <div className="mt-6">
         <h2 className="text-xl font-semibold text-slate-50 mb-2">
           Posts by {userProfile.name}
