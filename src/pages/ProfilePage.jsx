@@ -8,10 +8,15 @@ import {
   query,
   where,
   getDocs,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { uploadImageToCloudinary } from "../lib/cloudinary";
+import { Link } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { getOptimizedImageUrl } from "../lib/cloudinary";
 
 export default function ProfilePage() {
   const { currentUser, profile, setProfile } = useAuth();
@@ -28,6 +33,11 @@ export default function ProfilePage() {
 
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
+
+  // my posts state
+  const [myPosts, setMyPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsError, setPostsError] = useState("");
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -91,6 +101,48 @@ export default function ProfilePage() {
 
     loadProfile();
   }, [currentUser, profile, setProfile]);
+
+  // fetch my posts
+  useEffect(() => {
+    const fetchMyPosts = async () => {
+      if (!currentUser) {
+        setMyPosts([]);
+        setPostsLoading(false);
+        return;
+      }
+
+      try {
+        setPostsLoading(true);
+        setPostsError("");
+
+        const postsRef = collection(db, "posts");
+        const q = query(
+          postsRef,
+          where("authorId", "==", currentUser.uid),
+          orderBy("createdAt", "desc")
+        );
+
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+          setMyPosts([]);
+        } else {
+          const postsData = snap.docs.map((docSnap) => ({
+            id: docSnap.id,
+            ...docSnap.data(),
+          }));
+          setMyPosts(postsData);
+        }
+      } catch (err) {
+        console.error(err);
+        setPostsError("Failed to load your posts.");
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+
+    fetchMyPosts();
+  }, [currentUser?.uid]);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
@@ -187,7 +239,9 @@ export default function ProfilePage() {
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-300 text-sm">Loading your BharatBlog profile...</p>
+          <p className="text-slate-300 text-sm">
+            Loading your BharatBlog profile...
+          </p>
         </div>
       </div>
     );
@@ -224,7 +278,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Card */}
+      {/* Profile card */}
       <div className="relative">
         <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 via-sky-500/15 to-emerald-500/20 rounded-3xl blur-xl opacity-60" />
         <div className="relative bg-slate-950/90 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl backdrop-blur-xl">
@@ -256,7 +310,6 @@ export default function ProfilePage() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-2">
-                {/* Styled choose avatar */}
                 <label className="inline-flex items-center justify-center px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs font-medium cursor-pointer hover:bg-slate-700 border border-slate-600">
                   Choose image
                   <input
@@ -267,7 +320,6 @@ export default function ProfilePage() {
                   />
                 </label>
 
-                {/* Upload button */}
                 <button
                   type="button"
                   onClick={handleUploadAvatar}
@@ -278,7 +330,6 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              {/* File name / note */}
               {avatarFile && (
                 <p className="text-[11px] text-slate-400 truncate">
                   Selected: {avatarFile.name}
@@ -335,6 +386,122 @@ export default function ProfilePage() {
             </div>
           </form>
         </div>
+      </div>
+
+      {/* My posts section */}
+      <div className="mt-10">
+        <h2 className="text-xl font-semibold text-slate-50 mb-2">Your posts</h2>
+        <p className="text-xs text-slate-400 mb-4">
+          All posts written by you on BharatBlog.
+        </p>
+
+        {postsLoading && (
+          <div className="flex items-center gap-2 text-sm text-slate-300">
+            <div className="w-5 h-5 border-2 border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
+            <span>Loading your posts...</span>
+          </div>
+        )}
+
+        {postsError && !postsLoading && (
+          <div className="mb-3 text-sm text-red-400 bg-red-950/40 border border-red-500/40 px-3 py-2 rounded-lg">
+            {postsError}
+          </div>
+        )}
+
+        {!postsLoading && !postsError && myPosts.length === 0 && (
+          <div className="mt-3 rounded-2xl border border-dashed border-slate-700/70 bg-slate-900/60 px-4 py-6 text-center">
+            <p className="text-slate-200 text-sm font-medium mb-1">
+              You haven’t written any posts yet.
+            </p>
+            <p className="text-slate-400 text-xs mb-3">
+              Create your first BharatBlog post from the Create page.
+            </p>
+            <Link
+              to="/create"
+              className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-emerald-500 text-white text-xs font-medium hover:bg-emerald-600"
+            >
+              Write a post
+            </Link>
+          </div>
+        )}
+
+        {!postsLoading && !postsError && myPosts.length > 0 && (
+          <div className="mt-3 space-y-4">
+            {myPosts.map((post) => {
+              const previewContent = post.content
+                ? post.content.slice(0, 150)
+                : "";
+              const createdAt = post.createdAt;
+              const date = createdAt?.toDate ? createdAt.toDate() : createdAt;
+              const createdAtText =
+                date instanceof Date ? date.toLocaleString() : "";
+
+              const thumbUrl = post.imageUrl
+                ? getOptimizedImageUrl(post.imageUrl, { width: 400 })
+                : "";
+
+              return (
+                <article
+                  key={post.id}
+                  className="relative overflow-hidden rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 transition-colors shadow-sm shadow-black/30"
+                >
+                  <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500 via-sky-500 to-emerald-500 opacity-60" />
+
+                  <div className="p-4 flex flex-col sm:flex-row gap-4">
+                    {post.imageUrl && (
+                      <Link
+                        to={`/post/${post.slug}`}
+                        className="hidden sm:block h-20 w-28 rounded-xl overflow-hidden border border-slate-700 flex-shrink-0"
+                      >
+                        <img
+                          src={thumbUrl}
+                          alt={post.title}
+                          className="h-full w-full object-cover hover:scale-[1.02] transition-transform"
+                          loading="lazy"
+                        />
+                      </Link>
+                    )}
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <Link
+                          to={`/post/${post.slug}`}
+                          className="inline-block text-sm sm:text-base font-semibold text-emerald-400 hover:text-emerald-300 hover:underline line-clamp-2"
+                        >
+                          {post.title}
+                        </Link>
+                        <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                          {createdAtText}
+                        </span>
+                      </div>
+
+                      <div className="mt-1 text-xs text-slate-200 line-clamp-3 prose prose-invert max-w-none">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {previewContent}
+                        </ReactMarkdown>
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
+                        <Link
+                          to={`/edit/${post.id}`}
+                          className="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100"
+                        >
+                          Edit
+                        </Link>
+                        <Link
+                          to={`/post/${post.slug}`}
+                          className="text-emerald-400 hover:text-emerald-300"
+                        >
+                          View →
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

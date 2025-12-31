@@ -14,6 +14,8 @@ import { useAuth } from "../context/AuthContext";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getOptimizedImageUrl } from "../lib/cloudinary";
+import { togglePostLike } from "../lib/likes";
+import { Heart } from "lucide-react";
 
 const PAGE_SIZE = 5;
 
@@ -25,6 +27,7 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const [likeLoading, setLikeLoading] = useState({});
 
   const fetchPosts = async (isLoadMore = false) => {
     try {
@@ -81,6 +84,44 @@ export default function FeedPage() {
     if (!ts) return "";
     const date = ts.toDate ? ts.toDate() : ts;
     return date.toLocaleString();
+  };
+
+  const handleToggleLike = async (post) => {
+    if (!currentUser) return;
+
+    const postId = post.id;
+    const userId = currentUser.uid;
+
+    // optimistic update
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        const likedBy = Array.isArray(p.likedBy) ? p.likedBy : [];
+        const hasLiked = likedBy.includes(userId);
+        const newLikedBy = hasLiked
+          ? likedBy.filter((id) => id !== userId)
+          : [...likedBy, userId];
+        const likesCount = typeof p.likesCount === "number" ? p.likesCount : 0;
+        return {
+          ...p,
+          likedBy: newLikedBy,
+          likesCount: likesCount + (hasLiked ? -1 : 1),
+        };
+      })
+    );
+
+    setLikeLoading((prev) => ({ ...prev, [postId]: true }));
+
+    try {
+      await togglePostLike(postId, userId);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update like. Please try again.");
+      // reload page data to be safe
+      fetchPosts(false);
+    } finally {
+      setLikeLoading((prev) => ({ ...prev, [postId]: false }));
+    }
   };
 
   if (loading && posts.length === 0) {
@@ -160,6 +201,13 @@ export default function FeedPage() {
             ? getOptimizedImageUrl(post.imageUrl, { width: 400 })
             : "";
 
+          const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+          const isLiked = currentUser
+            ? likedBy.includes(currentUser.uid)
+            : false;
+          const likesCount =
+            typeof post.likesCount === "number" ? post.likesCount : 0;
+
           return (
             <article
               key={post.id}
@@ -185,26 +233,33 @@ export default function FeedPage() {
 
                 <div className="flex-1 min-w-0">
                   {/* author row */}
-                  <div className="flex items-center gap-3 mb-2">
-                    {avatarUrl && (
-                      <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-600 bg-slate-800 flex-shrink-0">
-                        <img
-                          src={avatarUrl}
-                          alt={displayName}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-                    )}
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-slate-100">
-                        {displayName}
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        {createdAtText}
-                      </span>
-                    </div>
-                  </div>
+                 <div className="flex items-center gap-3 mb-2">
+  {avatarUrl && (
+    <Link
+      to={`/u/${post.authorId}`}
+      className="h-8 w-8 rounded-full overflow-hidden border border-slate-600 bg-slate-800 flex-shrink-0"
+    >
+      <img
+        src={avatarUrl}
+        alt={displayName}
+        className="h-full w-full object-cover"
+        loading="lazy"
+      />
+    </Link>
+  )}
+  <div className="flex flex-col">
+    <Link
+      to={`/u/${post.authorId}`}
+      className="text-xs font-semibold text-slate-100 hover:text-emerald-300 hover:underline"
+    >
+      {displayName}
+    </Link>
+    <span className="text-[11px] text-slate-400">
+      {createdAtText}
+    </span>
+  </div>
+</div>
+
 
                   {/* title */}
                   <Link
@@ -251,22 +306,45 @@ export default function FeedPage() {
                     </ReactMarkdown>
                   </div>
 
-                  {/* edit + read more row */}
+                  {/* edit + read more row + like */}
                   <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
-                    {currentUser?.uid === post.authorId ? (
-                      <div className="flex gap-2">
-                        <Link
-                          to={`/edit/${post.id}`}
-                          className="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100"
-                        >
-                          Edit post
-                        </Link>
-                      </div>
-                    ) : (
-                      <span className="text-[11px] text-slate-500">
-                        Posted on BharatBlog
-                      </span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {/* LIKE BUTTON */}
+                      <button
+                        type="button"
+                        disabled={!currentUser || likeLoading[post.id]}
+                        onClick={() => handleToggleLike(post)}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] ${
+                          isLiked
+                            ? "bg-rose-500/10 border-rose-500/40 text-rose-300"
+                            : "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700"
+                        } disabled:opacity-60`}
+                      >
+                        <Heart
+                          className={`h-3.5 w-3.5 ${
+                            isLiked
+                              ? "fill-rose-500 text-rose-400"
+                              : "text-slate-300"
+                          }`}
+                        />
+                        <span>{likesCount}</span>
+                      </button>
+
+                      {currentUser?.uid === post.authorId ? (
+                        <div className="flex gap-2">
+                          <Link
+                            to={`/edit/${post.id}`}
+                            className="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100"
+                          >
+                            Edit post
+                          </Link>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-slate-500">
+                          Posted on BharatBlog
+                        </span>
+                      )}
+                    </div>
 
                     <Link
                       to={`/post/${post.slug}`}

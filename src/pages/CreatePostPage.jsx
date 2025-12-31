@@ -130,18 +130,24 @@ export default function CreatePostPage() {
       const authorEmail = profile?.email || currentUser.email || "";
       const authorAvatarUrl = profile?.avatarUrl || "";
 
+
       await addDoc(collection(db, "posts"), {
-        title: title.trim(),
-        slug,
-        content,
-        imageUrl: imageUrl || "",
-        authorId: currentUser.uid,
-        authorName,
-        authorEmail,
-        authorAvatarUrl,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+  title: title.trim(),
+  slug,
+  content,
+  imageUrl: imageUrl || "",
+  authorId: currentUser.uid,
+  authorName,
+  authorEmail,
+  authorAvatarUrl,
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+
+  // NEW FIELDS FOR LIKES
+  likesCount: 0,
+  likedBy: [],
+});
+
 
       navigate("/feed");
     } catch (err) {

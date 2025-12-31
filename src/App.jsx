@@ -12,6 +12,7 @@ const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const VerifiedLandingPage = lazy(() => import("./pages/VerifiedLandingPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
+const UserProfilePage = lazy(() => import("./pages/UserProfilePage")); // NEW
 
 // Non‑lazy components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -87,6 +88,18 @@ export default function App() {
             <ProtectedRoute>
               <MainLayout>
                 <ProfilePage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* NEW: public profile for any user */}
+        <Route
+          path="/u/:uid"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <UserProfilePage />
               </MainLayout>
             </ProtectedRoute>
           }

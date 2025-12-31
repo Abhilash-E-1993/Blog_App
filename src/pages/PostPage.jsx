@@ -15,6 +15,8 @@ import { useAuth } from "../context/AuthContext";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getOptimizedImageUrl } from "../lib/cloudinary";
+import { togglePostLike } from "../lib/likes";
+import { Heart } from "lucide-react";
 
 export default function PostPage() {
   const { slug } = useParams();
@@ -25,6 +27,7 @@ export default function PostPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const [likeLoading, setLikeLoading] = useState(false);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -87,6 +90,41 @@ export default function PostPage() {
     }
   };
 
+  const handleToggleLike = async () => {
+    if (!currentUser || !post) return;
+
+    const userId = currentUser.uid;
+    const postId = post.id;
+
+    // optimistic update
+    setPost((prev) => {
+      if (!prev) return prev;
+      const likedBy = Array.isArray(prev.likedBy) ? prev.likedBy : [];
+      const hasLiked = likedBy.includes(userId);
+      const newLikedBy = hasLiked
+        ? likedBy.filter((id) => id !== userId)
+        : [...likedBy, userId];
+      const likesCount =
+        typeof prev.likesCount === "number" ? prev.likesCount : 0;
+      return {
+        ...prev,
+        likedBy: newLikedBy,
+        likesCount: likesCount + (hasLiked ? -1 : 1),
+      };
+    });
+
+    setLikeLoading(true);
+    try {
+      await togglePostLike(postId, userId);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update like. Please try again.");
+      // optionally you could re-fetch the post here
+    } finally {
+      setLikeLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -123,6 +161,11 @@ export default function PostPage() {
     ? getOptimizedImageUrl(post.imageUrl, { width: 1200 })
     : "";
 
+  const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+  const isLiked = currentUser ? likedBy.includes(currentUser.uid) : false;
+  const likesCount =
+    typeof post.likesCount === "number" ? post.likesCount : 0;
+
   return (
     <div className="max-w-3xl mx-auto py-4">
       {error && (
@@ -139,11 +182,15 @@ export default function PostPage() {
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:text-xs text-slate-400">
           <span>
-            By{" "}
-            <span className="font-medium text-slate-200">
-              {post.authorName || "Unknown"}
-            </span>
-          </span>
+  By{" "}
+  <Link
+    to={`/u/${post.authorId}`}
+    className="font-medium text-slate-200 hover:text-emerald-300 hover:underline"
+  >
+    {post.authorName || "Unknown"}
+  </Link>
+</span>
+
           <span className="h-1 w-1 rounded-full bg-slate-600" />
           <span>{formatDate(post.createdAt)}</span>
           {post.updatedAt && (
@@ -154,6 +201,29 @@ export default function PostPage() {
               </span>
             </>
           )}
+        </div>
+
+        {/* Like button under meta */}
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            type="button"
+            disabled={!currentUser || likeLoading}
+            onClick={handleToggleLike}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs ${
+              isLiked
+                ? "bg-rose-500/10 border-rose-500/40 text-rose-300"
+                : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800"
+            } disabled:opacity-60`}
+          >
+            <Heart
+              className={`h-4 w-4 ${
+                isLiked ? "fill-rose-500 text-rose-400" : "text-slate-300"
+              }`}
+            />
+            <span>
+              {likesCount} like{likesCount === 1 ? "" : "s"}
+            </span>
+          </button>
         </div>
       </div>
 
