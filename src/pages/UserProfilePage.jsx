@@ -117,7 +117,7 @@ export default function UserProfilePage() {
         }
       } catch (err) {
         console.error(err);
-        setPostsError("Failed to load user posts.");
+        setPostsError("Failed to load creator content.");
       } finally {
         setPostsLoading(false);
       }
@@ -163,7 +163,7 @@ export default function UserProfilePage() {
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-300 text-sm">Loading user profile...</p>
+          <p className="text-slate-300 text-sm">Loading creator profile...</p>
         </div>
       </div>
     );
@@ -174,7 +174,7 @@ export default function UserProfilePage() {
       <div className="max-w-3xl mx-auto py-8 px-4 sm:px-0">
         <div className="rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/70 px-6 py-8">
           <p className="text-slate-200 text-base font-medium mb-2">
-            This BharatBlog user profile could not be found.
+            This BharatBlog creator profile could not be found.
           </p>
           <p className="text-slate-400 text-sm mb-4">
             The account may have been removed or the link might be incorrect.
@@ -198,7 +198,7 @@ export default function UserProfilePage() {
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 mb-2">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-emerald-300">
-              BharatBlog Profile
+              BharatBlog Creator
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 tracking-tight">
@@ -206,7 +206,7 @@ export default function UserProfilePage() {
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
             {isMe
-              ? "This is your public creator profile."
+              ? "This is your public creator profile as seen by other readers."
               : "Public creator profile on BharatBlog."}
           </p>
         </div>
@@ -269,11 +269,11 @@ export default function UserProfilePage() {
               </div>
             </div>
 
-            {/* stats + actions */}
+            {/* stats */}
             <div className="grid grid-cols-3 gap-3 rounded-2xl bg-slate-900/70 border border-slate-800 px-3 py-3 text-center text-xs sm:text-sm">
               <div>
                 <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide">
-                  Posts
+                  Stories
                 </p>
                 <p className="text-base sm:text-lg font-semibold text-slate-50">
                   {totalPosts}
@@ -281,7 +281,7 @@ export default function UserProfilePage() {
               </div>
               <div>
                 <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide">
-                  Likes
+                  Applause
                 </p>
                 <p className="text-base sm:text-lg font-semibold text-emerald-400">
                   {totalLikes}
@@ -289,7 +289,7 @@ export default function UserProfilePage() {
               </div>
               <div>
                 <p className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide">
-                  Type
+                  Role
                 </p>
                 <p className="text-base sm:text-lg font-semibold text-slate-50">
                   Author
@@ -300,7 +300,7 @@ export default function UserProfilePage() {
             {/* CTA */}
             <div className="flex items-center justify-between gap-3">
               <p className="text-[10px] text-slate-500">
-                View this creator&apos;s stories on the right.
+                Explore this creator&apos;s latest writing on the right.
               </p>
               {isMe ? (
                 <Link
@@ -328,10 +328,10 @@ export default function UserProfilePage() {
           <div className="flex items-center justify-between gap-2">
             <div>
               <h2 className="text-lg sm:text-xl font-semibold text-slate-50">
-                Posts by {userProfile.name}
+                Recent writing
               </h2>
               <p className="text-xs text-slate-400">
-                All public posts written by this user.
+                Articles and updates published by {userProfile.name}.
               </p>
             </div>
           </div>
@@ -352,10 +352,10 @@ export default function UserProfilePage() {
           {!postsLoading && !postsError && posts.length === 0 && (
             <div className="mt-2 rounded-2xl border border-dashed border-slate-700/70 bg-slate-900/60 px-4 py-6 text-center">
               <p className="text-slate-200 text-sm font-medium mb-1">
-                No posts yet.
+                No stories published yet.
               </p>
               <p className="text-slate-400 text-xs mb-3">
-                This user has not published any BharatBlog posts yet.
+                This creator has not shared any BharatBlog posts so far.
               </p>
             </div>
           )}
@@ -434,7 +434,7 @@ export default function UserProfilePage() {
                           to={`/post/${post.slug}`}
                           className="text-emerald-400 hover:text-emerald-300"
                         >
-                          View →
+                          Read story →
                         </Link>
                       </div>
                     </div>
