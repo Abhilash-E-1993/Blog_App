@@ -1,6 +1,11 @@
 // src/App.jsx
-import { Routes, Route } from "react-router-dom";
-import { Suspense, lazy } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
+import { Suspense, lazy, useEffect } from "react";
+
+import {
+  requestNotificationPermission,
+  subscribeToForegroundMessages,
+} from "./lib/notifications";
 
 // Lazy pages
 const FeedPage = lazy(() => import("./pages/FeedPage"));
@@ -21,27 +26,47 @@ const ChatPage = lazy(() => import("./pages/ChatPage"));
 import ProtectedRoute from "./components/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
 import ChatLayout from "./pages/ChatLayout";
+import AuthRedirect from "./pages/AuthRedirect";
+
+const AppFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-950">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-10 h-10 border-4 border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
+      <p className="text-slate-300 text-sm">Loading BharatBlog...</p>
+    </div>
+  </div>
+);
 
 export default function App() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-slate-950">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-4 border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
-            <p className="text-slate-300 text-sm">Loading BharatBlog...</p>
-          </div>
-        </div>
-      }
-    >
-      <Routes>
-        {/* Public routes WITHOUT navbar */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/verified" element={<VerifiedLandingPage />} />
+  const location = useLocation();
 
-        {/* Protected app routes WITH navbar */}
+  useEffect(() => {
+    // Ask for notification permission + get FCM token
+    requestNotificationPermission();
+
+    // Listen for foreground messages
+    const unsubscribePromise = subscribeToForegroundMessages((payload) => {
+      console.log("New foreground notification:", payload);
+      // Show toast/snackbar if you want
+    });
+
+    return () => {
+      Promise.resolve(unsubscribePromise).then((unsubscribe) => {
+        if (typeof unsubscribe === "function") unsubscribe();
+      });
+    };
+  }, []);
+
+  return (
+    <Suspense fallback={<AppFallback />}>
+      <Routes location={location}>
+        <Route element={<AuthRedirect />}>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verified" element={<VerifiedLandingPage />} />
+        </Route>
+
         <Route
           path="/feed"
           element={
@@ -108,7 +133,6 @@ export default function App() {
           }
         />
 
-        {/* Public profile for any user (still behind auth) */}
         <Route
           path="/u/:uid"
           element={
@@ -120,7 +144,6 @@ export default function App() {
           }
         />
 
-        {/* Chats list WITH navbar */}
         <Route
           path="/chats"
           element={
@@ -132,7 +155,6 @@ export default function App() {
           }
         />
 
-        {/* Single chat WITHOUT navbar – full immersive chat */}
         <Route
           path="/chat/:conversationId"
           element={
