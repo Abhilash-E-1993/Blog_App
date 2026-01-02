@@ -27,18 +27,31 @@ app.use(
 app.use(express.json());
 
 // ---------- FIREBASE ADMIN INIT ----------
-let serviceAccount;
-try {
-  serviceAccount = require(path.join(__dirname, "serviceAccountKey.json"));
-} catch (e) {
-  console.error(
-    "Failed to load serviceAccountKey.json. Make sure it exists on the server."
-  );
-  process.exit(1);
+let serviceAccountConfig;
+
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+  try {
+    serviceAccountConfig = JSON.parse(
+      process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+    );
+  } catch (e) {
+    console.error("Invalid GOOGLE_APPLICATION_CREDENTIALS_JSON", e);
+    process.exit(1);
+  }
+} else {
+  // Local dev fallback: use file
+  try {
+    serviceAccountConfig = require(path.join(__dirname, "serviceAccountKey.json"));
+  } catch (e) {
+    console.error(
+      "Missing serviceAccountKey.json and GOOGLE_APPLICATION_CREDENTIALS_JSON. Add one of them."
+    );
+    process.exit(1);
+  }
 }
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.cert(serviceAccountConfig),
 });
 
 const db = admin.firestore();
@@ -160,9 +173,6 @@ app.post("/api/notify-new-post", async (req, res) => {
     }
 
     // For now: notify only the author so you can test the flow.
-    // Later, you can:
-    //  - read followers from a collection (e.g. followers/{authorId}/users/*)
-    //  - loop over them, calling sendNotificationToUser for each follower.
     const targetUid = authorId;
 
     const messageTitle = "BharatBlog · Story published";
