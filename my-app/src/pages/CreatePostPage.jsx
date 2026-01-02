@@ -1,4 +1,4 @@
-// src/pages/CreateStoryPage.jsx (you can keep the filename as CreatePostPage.jsx if you want)
+// src/pages/CreateStoryPage.jsx
 import { useState, lazy, Suspense, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,6 +9,10 @@ import {
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { uploadImageToCloudinary } from "../lib/cloudinary";
+
+// Same base URL strategy as chat/profile
+const NOTIFICATIONS_API_BASE =
+  import.meta.env.VITE_NOTIFICATIONS_API_BASE || "http://localhost:4000";
 
 // Lazy‑load heavy markdown editor to reduce initial bundle
 const MDEditor = lazy(() => import("@uiw/react-md-editor"));
@@ -28,6 +32,28 @@ function normalizeUrl(url) {
     return trimmed;
   }
   return `https://${trimmed}`;
+}
+
+// Notify backend that a new post was created
+async function notifyNewPost({ postId, authorId, authorName, title, slug }) {
+  try {
+    await fetch(`${NOTIFICATIONS_API_BASE}/api/notify-new-post`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        postId,
+        authorId,
+        authorName,
+        title,
+        slug,
+      }),
+    });
+  } catch (err) {
+    // Do not block UI on notification failure; just log it
+    console.error("Failed to notify new post:", err);
+  }
 }
 
 export default function CreatePostPage() {
@@ -119,7 +145,9 @@ export default function CreatePostPage() {
       const randomSuffix = Math.random().toString(36).slice(2, 7);
       const slug = `${baseSlug}-${randomSuffix}`;
 
-      await addDoc(collection(db, "posts"), {
+      const postsRef = collection(db, "posts");
+
+      const docRef = await addDoc(postsRef, {
         title: title.trim(),
         slug,
         content,
@@ -132,6 +160,15 @@ export default function CreatePostPage() {
         updatedAt: serverTimestamp(),
         likesCount: 0,
         likedBy: [],
+      });
+
+      // Fire-and-forget new post notification
+      notifyNewPost({
+        postId: docRef.id,
+        authorId: currentUser.uid,
+        authorName,
+        title: title.trim(),
+        slug,
       });
 
       navigate("/feed");

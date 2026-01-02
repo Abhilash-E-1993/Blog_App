@@ -17,9 +17,38 @@ import {
   markConversationRead,
 } from "../lib/chat";
 
+const NOTIFICATIONS_API_BASE =
+  import.meta.env.VITE_NOTIFICATIONS_API_BASE || "http://localhost:4000";
+
+// Sends push notification when a new chat message is created
+async function notifyNewMessage({ targetUid, senderName, text, conversationId }) {
+  try {
+    const preview =
+      text.length > 60 ? text.slice(0, 57).trimEnd() + "..." : text;
+
+    await fetch(`${NOTIFICATIONS_API_BASE}/api/send-notification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        targetUid,
+        // Clean, product-style title
+        title: "BharatBlog · New message",
+        // No email here: "<SenderName>: message preview"
+        body: `${senderName}: ${preview}`,
+        link: `https://blog-app-219e7.web.app/chats/${conversationId}`,
+        iconUrl: "https://blog-app-219e7.web.app/icons/icon-192.png",
+      }),
+    });
+  } catch (err) {
+    console.error("Failed to notify new message:", err);
+  }
+}
+
 export default function ChatPage() {
   const { conversationId } = useParams();
-  const { currentUser } = useAuth();
+  const { currentUser, profile } = useAuth();
   const navigate = useNavigate();
 
   const [otherUser, setOtherUser] = useState(null);
@@ -42,7 +71,7 @@ export default function ChatPage() {
     }
   }, [messages, scrollToBottom]);
 
-  // load conversation + subscribe messages
+  // Load conversation + subscribe messages
   useEffect(() => {
     let unsubMessages = null;
     let isActive = true;
@@ -84,7 +113,7 @@ export default function ChatPage() {
           return;
         }
 
-        let otherInfo =
+        const otherInfo =
           convData.participantInfo?.[otherUid] ||
           (await getUserProfileLite(otherUid));
 
@@ -145,6 +174,19 @@ export default function ChatPage() {
           trimmedInput
         );
 
+        // IMPORTANT: senderName uses profile.name (or displayName) – no email
+        const senderName =
+          profile?.name ||
+          currentUser.displayName ||
+          "BharatBlog user";
+
+        notifyNewMessage({
+          targetUid: otherUser.uid,
+          senderName,
+          text: trimmedInput,
+          conversationId,
+        });
+
         inputRef.current?.focus();
       } catch (err) {
         console.error(err);
@@ -154,7 +196,7 @@ export default function ChatPage() {
         setSending(false);
       }
     },
-    [input, currentUser, otherUser, sending, conversationId]
+    [input, currentUser, otherUser, sending, conversationId, profile?.name]
   );
 
   const handleInputChange = useCallback((e) => {
@@ -171,23 +213,21 @@ export default function ChatPage() {
     [handleSubmit]
   );
 
-  // group messages by day for date separators
+  // Group messages by day
   const groupedMessages = useMemo(() => {
     const groups = [];
     let currentDate = null;
 
     messages.forEach((m) => {
       const d = m.createdAt?.toDate ? m.createdAt.toDate() : m.createdAt;
-      const dayKey =
-        d instanceof Date ? d.toDateString() : "Unknown date";
+      const dayKey = d instanceof Date ? d.toDateString() : "Unknown date";
 
       if (dayKey !== currentDate) {
         currentDate = dayKey;
         groups.push({
           type: "separator",
           key: `sep-${dayKey}`,
-          label:
-            d instanceof Date ? formatDayLabel(d) : "Unknown date",
+          label: d instanceof Date ? formatDayLabel(d) : "Unknown date",
         });
       }
 
@@ -202,10 +242,7 @@ export default function ChatPage() {
       groupedMessages.map((item) => {
         if (item.type === "separator") {
           return (
-            <div
-              key={item.key}
-              className="flex justify-center my-3"
-            >
+            <div key={item.key} className="flex justify-center my-3">
               <span className="px-3 py-1 rounded-full bg-slate-900/80 border border-slate-700/60 text-[10px] text-slate-400 uppercase tracking-wide shadow-sm">
                 {item.label}
               </span>
@@ -220,9 +257,7 @@ export default function ChatPage() {
         return (
           <div
             key={m.id}
-            className={`flex ${
-              isMine ? "justify-end" : "justify-start"
-            }`}
+            className={`flex ${isMine ? "justify-end" : "justify-start"}`}
           >
             <div
               className={`group relative max-w-[85%] sm:max-w-[75%] md:max-w-[60%] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm transition-colors ${
@@ -254,9 +289,7 @@ export default function ChatPage() {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-slate-300 text-sm">
-            No conversation selected
-          </p>
+          <p className="text-slate-300 text-sm">No conversation selected</p>
         </div>
       </div>
     );
@@ -267,9 +300,7 @@ export default function ChatPage() {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-emerald-500/40 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-300 text-sm">
-            Loading conversation...
-          </p>
+          <p className="text-slate-300 text-sm">Loading conversation...</p>
         </div>
       </div>
     );
@@ -317,8 +348,6 @@ export default function ChatPage() {
               <span className="text-sm font-medium text-slate-100 max-w-[140px] sm:max-w-none truncate">
                 {otherUser.name}
               </span>
-              {/* No fake presence; can replace with real last-seen later */}
-              {/* <span className="text-[10px] text-slate-500">Last seen recently</span> */}
             </div>
           </div>
         )}

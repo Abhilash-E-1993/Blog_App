@@ -12,11 +12,15 @@ import {
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
-import { uploadImageToCloudinary } from "../lib/cloudinary";
-import { getOptimizedImageUrl } from "../lib/cloudinary";
+import { uploadImageToCloudinary, getOptimizedImageUrl } from "../lib/cloudinary";
 import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+const NOTIFICATION_SERVER_URL =
+  import.meta.env.PROD
+    ? "https://your-production-notification-domain.com" // TODO: update to real URL
+    : "http://localhost:4000";
 
 export default function ProfilePage() {
   const { currentUser, profile, setProfile } = useAuth();
@@ -45,7 +49,7 @@ export default function ProfilePage() {
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsError, setPostsError] = useState("");
 
-  // derived stats
+  // derived stats – cheap enough to compute in useMemo
   const totalPosts = useMemo(() => myPosts.length, [myPosts]);
   const totalLikes = useMemo(
     () =>
@@ -56,11 +60,11 @@ export default function ProfilePage() {
     [myPosts]
   );
 
-  // Load profile (bio is just a field on users, not a collection). [web:384]
+  // Load profile from Firestore if not available in context
   useEffect(() => {
-    const loadProfile = async () => {
-      if (!currentUser) return;
+    if (!currentUser) return;
 
+    const loadProfile = async () => {
       try {
         setLoading(true);
         setError("");
@@ -131,13 +135,13 @@ export default function ProfilePage() {
 
   // Load user's posts
   useEffect(() => {
-    const fetchMyPosts = async () => {
-      if (!currentUser) {
-        setMyPosts([]);
-        setPostsLoading(false);
-        return;
-      }
+    if (!currentUser) {
+      setMyPosts([]);
+      setPostsLoading(false);
+      return;
+    }
 
+    const fetchMyPosts = async () => {
       try {
         setPostsLoading(true);
         setPostsError("");
@@ -170,7 +174,7 @@ export default function ProfilePage() {
     fetchMyPosts();
   }, [currentUser?.uid]);
 
-  // avatar handlers
+  // Avatar handlers
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -181,6 +185,7 @@ export default function ProfilePage() {
   const handleUploadAvatar = async () => {
     setError("");
     setInfo("");
+
     if (!avatarFile) {
       setError("Please select an avatar image first.");
       return;
@@ -191,7 +196,7 @@ export default function ProfilePage() {
       const url = await uploadImageToCloudinary(avatarFile);
 
       const userRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userRef, { avatarUrl: url }); // field-only update [web:387]
+      await updateDoc(userRef, { avatarUrl: url });
 
       setAvatarUrl(url);
       setAvatarFile(null);
@@ -210,7 +215,7 @@ export default function ProfilePage() {
     }
   };
 
-  // profile form submit
+  // Profile form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -238,7 +243,6 @@ export default function ProfilePage() {
       setSaving(true);
 
       const userRef = doc(db, "users", currentUser.uid);
-      // creates/updates "bio" field on the user document, no new collection. [web:384]
       await updateDoc(userRef, {
         name: trimmedName,
         bio: trimmedBio,
@@ -268,6 +272,34 @@ export default function ProfilePage() {
       setError("Failed to update profile.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Industry-style test notification
+  const handleTestNotification = async () => {
+    if (!currentUser) return;
+
+    try {
+      const res = await fetch(`${NOTIFICATION_SERVER_URL}/api/send-notification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetUid: currentUser.uid,
+          title: "BharatBlog · Test notification",
+          body: `${name || "BharatBlog"} — your notification system is working.`,
+          link: "https://blog-app-219e7.web.app/profile",
+          iconUrl: "https://blog-app-219e7.web.app/icons/icon-192.png",
+        }),
+      });
+
+      const data = await res.json();
+      if (data.failureCount > 0) {
+        console.warn("Some tokens failed when sending test notification", data);
+      }
+      setInfo("Test notification sent (check your browser).");
+    } catch (err) {
+      console.error("send-notification error:", err);
+      setError("Failed to send test notification.");
     }
   };
 
@@ -307,13 +339,23 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        <Link
-          to="/create"
-          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-[11px] font-medium hover:bg-emerald-600 transition-colors"
-        >
-          <span className="text-sm leading-none">+</span>
-          <span>New post</span>
-        </Link>
+        <div className="flex flex-col items-end gap-2">
+          <Link
+            to="/create"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-[11px] font-medium hover:bg-emerald-600 transition-colors"
+          >
+            <span className="text-sm leading-none">+</span>
+            <span>New post</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={handleTestNotification}
+            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-500 text-white text-[11px] font-medium hover:bg-sky-600 transition-colors"
+          >
+            Test notification
+          </button>
+        </div>
       </div>
 
       {/* alerts */}

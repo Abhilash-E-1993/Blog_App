@@ -1,27 +1,35 @@
 // src/lib/messaging.js
 import { getToken, onMessage } from "firebase/messaging";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { messaging, db } from "./firebase";
 
 const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
 /**
  * Ask user for notification permission and, if granted,
- * get FCM token and save it on the user's document.
+ * get FCM token and save it under users/{uid}/fcmTokens/{token}.
  */
 export async function initMessagingForUser(userId) {
-  if (!userId || !("Notification" in window)) return;
+  if (!userId || typeof window === "undefined") return;
+  if (!("Notification" in window)) return;
+  if (!messaging) return;
 
   const permission = await Notification.requestPermission();
-  if (permission !== "granted") {
-    return;
-  }
+  if (permission !== "granted") return;
 
   const token = await getToken(messaging, { vapidKey });
   if (!token) return;
 
-  const userRef = doc(db, "users", userId);
-  await updateDoc(userRef, { fcmToken: token });
+  // Each device token is a doc ID in subcollection fcmTokens
+  const tokenRef = doc(db, "users", userId, "fcmTokens", token);
+  await setDoc(
+    tokenRef,
+    {
+      createdAt: new Date(),
+      userAgent: navigator.userAgent || "",
+    },
+    { merge: true }
+  );
 }
 
 /**
@@ -29,6 +37,8 @@ export async function initMessagingForUser(userId) {
  * You can later show a toast/snackbar for chat messages.
  */
 export function listenForForegroundMessages(callback) {
+  if (!messaging) return () => {};
+
   return onMessage(messaging, (payload) => {
     if (typeof callback === "function") {
       callback(payload);

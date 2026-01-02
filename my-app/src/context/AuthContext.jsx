@@ -1,7 +1,9 @@
+// src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { requestAndSaveFcmToken } from "../lib/notifications";
 
 const AuthContext = createContext(null);
 
@@ -10,6 +12,7 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null); // { name, avatarUrl, email }
   const [loading, setLoading] = useState(true);
 
+  // Load user + profile
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user || null);
@@ -62,6 +65,15 @@ export function AuthProvider({ children }) {
 
     return () => unsub();
   }, []);
+
+  // After user is known, request/save FCM token
+  useEffect(() => {
+    if (!currentUser) return;
+    // best effort, ignore errors in UI layer
+    requestAndSaveFcmToken(currentUser.uid).catch((err) =>
+      console.error("Failed to register FCM token:", err)
+    );
+  }, [currentUser]);
 
   const logout = () => signOut(auth);
 

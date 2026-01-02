@@ -2,10 +2,7 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import { Suspense, lazy, useEffect } from "react";
 
-import {
-  requestNotificationPermission,
-  subscribeToForegroundMessages,
-} from "./lib/notifications";
+import { subscribeToForegroundMessages } from "./lib/notifications";
 
 // Lazy pages
 const FeedPage = lazy(() => import("./pages/FeedPage"));
@@ -41,13 +38,10 @@ export default function App() {
   const location = useLocation();
 
   useEffect(() => {
-    // Ask for notification permission + get FCM token
-    requestNotificationPermission();
-
     // Listen for foreground messages
     const unsubscribePromise = subscribeToForegroundMessages((payload) => {
       console.log("New foreground notification:", payload);
-      // Show toast/snackbar if you want
+      // TODO: show toast/snackbar here instead of just logging
     });
 
     return () => {
