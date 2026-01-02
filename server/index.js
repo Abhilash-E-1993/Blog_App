@@ -18,11 +18,20 @@ const allowedOrigins = rawOrigins
   .map((o) => o.trim())
   .filter(Boolean);
 
-app.use(
-  cors({
-    origin: allowedOrigins,
-  })
-);
+const corsOptions = {
+  origin(origin, callback) {
+    // allow server-to-server / health checks with no origin
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
 
@@ -39,7 +48,6 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
     process.exit(1);
   }
 } else {
-  // Local dev fallback: use file
   try {
     serviceAccountConfig = require(path.join(__dirname, "serviceAccountKey.json"));
   } catch (e) {
@@ -98,7 +106,7 @@ async function sendNotificationToUser({
     },
   };
 
-  const response = await admin.messaging().sendEachForMulticast(message); // [web:61][web:62]
+  const response = await admin.messaging().sendEachForMulticast(message); // [web:49]
 
   // Clean up invalid tokens
   const deletes = [];
@@ -135,7 +143,7 @@ app.get("/", (_req, res) => {
   res.send("Notification server is running");
 });
 
-// Generic send-notification (used by chat/profile test)
+// Generic send-notification (used by chat/profile)
 app.post("/api/send-notification", async (req, res) => {
   try {
     const { targetUid, title, body, link, iconUrl } = req.body;
