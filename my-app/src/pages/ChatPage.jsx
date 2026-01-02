@@ -26,16 +26,17 @@ async function notifyNewMessage({ targetUid, senderName, text, conversationId })
     const preview =
       text.length > 60 ? text.slice(0, 57).trimEnd() + "..." : text;
 
-    await fetch(`${NOTIFICATIONS_API_BASE}/api/send-notification`, {
+    const url = `${NOTIFICATIONS_API_BASE}/api/send-notification`;
+    console.log("notifyNewMessage URL =", url);
+
+    await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         targetUid,
-        // Clean, product-style title
         title: "BharatBlog · New message",
-        // No email here: "<SenderName>: message preview"
         body: `${senderName}: ${preview}`,
         link: `https://blog-app-219e7.web.app/chats/${conversationId}`,
         iconUrl: "https://blog-app-219e7.web.app/icons/icon-192.png",
@@ -174,7 +175,6 @@ export default function ChatPage() {
           trimmedInput
         );
 
-        // IMPORTANT: senderName uses profile.name (or displayName) – no email
         const senderName =
           profile?.name ||
           currentUser.displayName ||

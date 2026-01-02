@@ -17,11 +17,6 @@ import { Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-const NOTIFICATION_SERVER_URL =
-  import.meta.env.PROD
-    ? "https://your-production-notification-domain.com" // TODO: update to real URL
-    : "http://localhost:4000";
-
 export default function ProfilePage() {
   const { currentUser, profile, setProfile } = useAuth();
 
@@ -275,34 +270,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Industry-style test notification
-  const handleTestNotification = async () => {
-    if (!currentUser) return;
-
-    try {
-      const res = await fetch(`${NOTIFICATION_SERVER_URL}/api/send-notification`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetUid: currentUser.uid,
-          title: "BharatBlog · Test notification",
-          body: `${name || "BharatBlog"} — your notification system is working.`,
-          link: "https://blog-app-219e7.web.app/profile",
-          iconUrl: "https://blog-app-219e7.web.app/icons/icon-192.png",
-        }),
-      });
-
-      const data = await res.json();
-      if (data.failureCount > 0) {
-        console.warn("Some tokens failed when sending test notification", data);
-      }
-      setInfo("Test notification sent (check your browser).");
-    } catch (err) {
-      console.error("send-notification error:", err);
-      setError("Failed to send test notification.");
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -347,14 +314,6 @@ export default function ProfilePage() {
             <span className="text-sm leading-none">+</span>
             <span>New post</span>
           </Link>
-
-          <button
-            type="button"
-            onClick={handleTestNotification}
-            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-500 text-white text-[11px] font-medium hover:bg-sky-600 transition-colors"
-          >
-            Test notification
-          </button>
         </div>
       </div>
 
