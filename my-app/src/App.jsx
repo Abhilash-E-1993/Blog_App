@@ -4,7 +4,7 @@ import { Suspense, lazy, useEffect } from "react";
 
 import { subscribeToForegroundMessages } from "./lib/notifications";
 
-// Lazy pages
+// Lazy-loaded pages
 const FeedPage = lazy(() => import("./pages/FeedPage"));
 const CreatePostPage = lazy(() => import("./pages/CreatePostPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
@@ -19,12 +19,15 @@ const SearchAccountsPage = lazy(() => import("./pages/SearchAccountsPage"));
 const ChatsListPage = lazy(() => import("./pages/ChatsListPage"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
 
-// Non‑lazy components
+// Non-lazy components
 import ProtectedRoute from "./components/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
 import ChatLayout from "./pages/ChatLayout";
 import AuthRedirect from "./pages/AuthRedirect";
 
+/* ======================================================
+   🌀 APP FALLBACK
+====================================================== */
 const AppFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-slate-950">
     <div className="flex flex-col items-center gap-3">
@@ -37,17 +40,26 @@ const AppFallback = () => (
 export default function App() {
   const location = useLocation();
 
+  /* ======================================================
+     🔔 FOREGROUND PUSH NOTIFICATIONS
+  ====================================================== */
   useEffect(() => {
-    // Listen for foreground messages
-    const unsubscribePromise = subscribeToForegroundMessages((payload) => {
-      console.log("New foreground notification:", payload);
-      // TODO: show toast/snackbar here instead of just logging
+    let unsubscribeFn;
+
+    subscribeToForegroundMessages((payload) => {
+      console.log("🔔 Foreground notification received:", payload);
+
+      // Later you can replace this with a toast/snackbar
+      // Example:
+      // showToast(payload.notification.title, payload.notification.body);
+    }).then((unsubscribe) => {
+      unsubscribeFn = unsubscribe;
     });
 
     return () => {
-      Promise.resolve(unsubscribePromise).then((unsubscribe) => {
-        if (typeof unsubscribe === "function") unsubscribe();
-      });
+      if (typeof unsubscribeFn === "function") {
+        unsubscribeFn();
+      }
     };
   }, []);
 
