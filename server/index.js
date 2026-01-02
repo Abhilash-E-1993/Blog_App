@@ -1,27 +1,31 @@
-// server/index.js
 require("dotenv").config();
 const express = require("express");
 const admin = require("firebase-admin");
 const path = require("path");
 
 const app = express();
+app.set("trust proxy", 1); // 🔴 REQUIRED ON RENDER
 const PORT = process.env.PORT || 4000;
 
 /* =========================================================
-   🔥 HARD RENDER-SAFE CORS (FINAL FIX)
+   🔥 HARD CORS FIX (RENDER-PROOF)
 ========================================================= */
 
 const FRONTEND_ORIGIN = "https://blog-app-219e7.web.app";
 
-/* 🔴 CRITICAL: explicit OPTIONS for the exact API route */
+/* 🔴 PRE-FLIGHT — MUST BE FIRST */
 app.options("/api/send-notification", (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", FRONTEND_ORIGIN);
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  return res.sendStatus(204);
+  res.status(204)
+    .set({
+      "Access-Control-Allow-Origin": FRONTEND_ORIGIN,
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Content-Length": "0",
+    })
+    .end();
 });
 
-/* Normal requests */
+/* 🔴 NORMAL REQUESTS */
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", FRONTEND_ORIGIN);
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -32,7 +36,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 /* =========================================================
-   🔥 FIREBASE ADMIN INIT
+   🔥 FIREBASE ADMIN
 ========================================================= */
 
 const serviceAccountConfig = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
@@ -49,22 +53,14 @@ const db = admin.firestore();
    🔔 PUSH HELPER
 ========================================================= */
 
-async function sendNotificationToUser({
-  targetUid,
-  title,
-  body,
-  link,
-  iconUrl,
-}) {
+async function sendNotificationToUser({ targetUid, title, body, link, iconUrl }) {
   const snap = await db
     .collection("users")
     .doc(targetUid)
     .collection("fcmTokens")
     .get();
 
-  if (snap.empty) {
-    return { successCount: 0, failureCount: 0 };
-  }
+  if (snap.empty) return { successCount: 0, failureCount: 0 };
 
   const tokens = snap.docs.map((d) => d.id);
 
@@ -73,19 +69,15 @@ async function sendNotificationToUser({
     notification: { title, body },
     webpush: {
       notification: {
-        icon:
-          iconUrl ||
-          "https://blog-app-219e7.web.app/icons/icon-192.png",
+        icon: iconUrl || `${FRONTEND_ORIGIN}/icons/icon-192.png`,
       },
       fcm_options: {
-        link: link || "https://blog-app-219e7.web.app",
+        link: link || FRONTEND_ORIGIN,
       },
     },
   };
 
-  const response = await admin
-    .messaging()
-    .sendEachForMulticast(message);
+  const response = await admin.messaging().sendEachForMulticast(message);
 
   return {
     successCount: response.successCount,
@@ -98,28 +90,15 @@ async function sendNotificationToUser({
 ========================================================= */
 
 app.get("/", (_req, res) => {
-  res.send("✅ Notification server running");
+  res.send("Notification server running");
 });
 
 app.post("/api/send-notification", async (req, res) => {
   try {
-    const { targetUid, title, body, link, iconUrl } = req.body;
-
-    if (!targetUid || !title || !body) {
-      return res.status(400).json({ error: "Invalid payload" });
-    }
-
-    const result = await sendNotificationToUser({
-      targetUid,
-      title,
-      body,
-      link,
-      iconUrl,
-    });
-
+    const result = await sendNotificationToUser(req.body);
     res.json(result);
-  } catch (err) {
-    console.error("send-notification error", err);
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -129,5 +108,5 @@ app.post("/api/send-notification", async (req, res) => {
 ========================================================= */
 
 app.listen(PORT, () => {
-  console.log(`🚀 Notification server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

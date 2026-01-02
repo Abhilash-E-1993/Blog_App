@@ -464,7 +464,7 @@ export default function ChatPage() {
         </form>
       </div>
 
-      <style jsx>{`
+      <style >{`
         .scrollbar-thin::-webkit-scrollbar {
           width: 6px;
         }
