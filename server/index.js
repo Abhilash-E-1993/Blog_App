@@ -8,31 +8,24 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 /* =========================================================
-   🔥 ABSOLUTE CORS FIX (RENDER + BROWSER SAFE)
+   🔥 HARD RENDER-SAFE CORS (FINAL FIX)
 ========================================================= */
 
-const ALLOWED_ORIGINS = [
-  "https://blog-app-219e7.web.app",
-  "https://blog-app-219e7.firebaseapp.com",
-  "http://localhost:5173",
-];
+const FRONTEND_ORIGIN = "https://blog-app-219e7.web.app";
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  if (ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+/* 🔴 CRITICAL: explicit OPTIONS for the exact API route */
+app.options("/api/send-notification", (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", FRONTEND_ORIGIN);
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Vary", "Origin");
+  return res.sendStatus(204);
+});
 
-  // 🔴 THIS IS THE MOST IMPORTANT LINE
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
+/* Normal requests */
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", FRONTEND_ORIGIN);
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   next();
 });
 
@@ -42,18 +35,9 @@ app.use(express.json());
    🔥 FIREBASE ADMIN INIT
 ========================================================= */
 
-let serviceAccountConfig;
-
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-  serviceAccountConfig = JSON.parse(
-    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-  );
-} else {
-  serviceAccountConfig = require(path.join(
-    __dirname,
-    "serviceAccountKey.json"
-  ));
-}
+const serviceAccountConfig = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+  ? JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON)
+  : require(path.join(__dirname, "serviceAccountKey.json"));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccountConfig),
@@ -62,7 +46,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 /* =========================================================
-   🔔 PUSH NOTIFICATION HELPER
+   🔔 PUSH HELPER
 ========================================================= */
 
 async function sendNotificationToUser({
@@ -72,17 +56,17 @@ async function sendNotificationToUser({
   link,
   iconUrl,
 }) {
-  const tokensSnap = await db
+  const snap = await db
     .collection("users")
     .doc(targetUid)
     .collection("fcmTokens")
     .get();
 
-  if (tokensSnap.empty) {
+  if (snap.empty) {
     return { successCount: 0, failureCount: 0 };
   }
 
-  const tokens = tokensSnap.docs.map((doc) => doc.id);
+  const tokens = snap.docs.map((d) => d.id);
 
   const message = {
     tokens,
@@ -103,29 +87,6 @@ async function sendNotificationToUser({
     .messaging()
     .sendEachForMulticast(message);
 
-  // Clean invalid tokens
-  const deletes = [];
-  response.responses.forEach((r, i) => {
-    if (!r.success) {
-      const code = r.error?.code;
-      if (
-        code === "messaging/invalid-registration-token" ||
-        code === "messaging/registration-token-not-registered"
-      ) {
-        deletes.push(
-          db
-            .collection("users")
-            .doc(targetUid)
-            .collection("fcmTokens")
-            .doc(tokens[i])
-            .delete()
-        );
-      }
-    }
-  });
-
-  await Promise.all(deletes);
-
   return {
     successCount: response.successCount,
     failureCount: response.failureCount,
@@ -145,9 +106,7 @@ app.post("/api/send-notification", async (req, res) => {
     const { targetUid, title, body, link, iconUrl } = req.body;
 
     if (!targetUid || !title || !body) {
-      return res.status(400).json({
-        error: "targetUid, title, body required",
-      });
+      return res.status(400).json({ error: "Invalid payload" });
     }
 
     const result = await sendNotificationToUser({
@@ -161,34 +120,14 @@ app.post("/api/send-notification", async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("send-notification error", err);
-    res.status(500).json({ error: "Internal error" });
-  }
-});
-
-app.post("/api/notify-new-post", async (req, res) => {
-  try {
-    const { authorId, authorName, title, slug } = req.body;
-
-    const link = `https://blog-app-219e7.web.app/post/${slug}`;
-
-    const result = await sendNotificationToUser({
-      targetUid: authorId,
-      title: "BharatBlog · New post",
-      body: `${authorName || "Author"} published “${title}”`,
-      link,
-    });
-
-    res.json(result);
-  } catch (err) {
-    console.error("notify-new-post error", err);
-    res.status(500).json({ error: "Internal error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 /* =========================================================
-   ▶ START SERVER
+   ▶ START
 ========================================================= */
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Notification server running on port ${PORT}`);
 });

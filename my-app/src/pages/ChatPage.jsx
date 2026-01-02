@@ -18,7 +18,9 @@ import {
 } from "../lib/chat";
 
 const NOTIFICATIONS_API_BASE =
-  import.meta.env.VITE_NOTIFICATIONS_API_BASE || "http://localhost:4000";
+  import.meta.env.PROD
+    ? "https://bharatblog-notifications.onrender.com"
+    : "http://localhost:4000";
 
 // Sends push notification when a new chat message is created
 async function notifyNewMessage({ targetUid, senderName, text, conversationId }) {
