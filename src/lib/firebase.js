@@ -2,8 +2,8 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getMessaging, isSupported } from "firebase/messaging";
 
-// Your web app's Firebase configuration from env
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -13,9 +13,22 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase core app
 const app = initializeApp(firebaseConfig);
 
-// Export services to use in your app
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Lazy messaging init, safe on browsers that don’t support it
+export async function getMessagingIfSupported() {
+  try {
+    const supported = await isSupported();
+    if (!supported) {
+      console.warn("FCM is not supported in this browser");
+      return null;
+    }
+    return getMessaging(app);
+  } catch (err) {
+    console.error("Error checking messaging support:", err);
+    return null;
+  }
+}

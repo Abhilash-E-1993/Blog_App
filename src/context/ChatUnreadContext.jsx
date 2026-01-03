@@ -10,17 +10,19 @@ export function ChatUnreadProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser?.uid) {
       setUnreadCount(0);
-      return;
+      return undefined;
     }
 
-    const unsub = subscribeToConversations(
-      currentUser.uid,
+    const userId = currentUser.uid;
+
+    const unsubscribe = subscribeToConversations(
+      userId,
       (convs) => {
-        const count = convs.filter((c) => {
+        const count = (convs || []).filter((c) => {
           const arr = Array.isArray(c.unreadFor) ? c.unreadFor : [];
-          return arr.includes(currentUser.uid);
+          return arr.includes(userId);
         }).length;
         setUnreadCount(count);
       },
@@ -29,7 +31,11 @@ export function ChatUnreadProvider({ children }) {
       }
     );
 
-    return () => unsub && unsub();
+    return () => {
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
+      }
+    };
   }, [currentUser?.uid]);
 
   return (

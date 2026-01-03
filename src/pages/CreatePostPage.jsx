@@ -12,6 +12,7 @@ import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import MDEditor from "@uiw/react-md-editor";
 import { uploadImageToCloudinary } from "../lib/cloudinary";
+import { sendPostNotification } from "../lib/notificationsApi";
 
 function slugify(title) {
   return title
@@ -104,6 +105,7 @@ export default function CreatePostPage() {
     try {
       setSubmitting(true);
 
+      // Resolve author name
       let authorName = "";
       try {
         const userRef = doc(db, "users", currentUser.uid);
@@ -111,8 +113,8 @@ export default function CreatePostPage() {
         if (userSnap.exists()) {
           authorName = userSnap.data().name || "";
         }
-      } catch (e) {
-        console.warn("Could not read user profile for name:", e);
+      } catch (e2) {
+        console.warn("Could not read user profile for name:", e2);
       }
 
       if (!authorName) {
@@ -130,24 +132,38 @@ export default function CreatePostPage() {
       const authorEmail = profile?.email || currentUser.email || "";
       const authorAvatarUrl = profile?.avatarUrl || "";
 
+      const postRef = await addDoc(collection(db, "posts"), {
+        title: title.trim(),
+        slug,
+        content,
+        imageUrl: imageUrl || "",
+        authorId: currentUser.uid,
+        authorName,
+        authorEmail,
+        authorAvatarUrl,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        likesCount: 0,
+        likedBy: [],
+      });
 
-      await addDoc(collection(db, "posts"), {
-  title: title.trim(),
-  slug,
-  content,
-  imageUrl: imageUrl || "",
-  authorId: currentUser.uid,
-  authorName,
-  authorEmail,
-  authorAvatarUrl,
-  createdAt: serverTimestamp(),
-  updatedAt: serverTimestamp(),
-
-  // NEW FIELDS FOR LIKES
-  likesCount: 0,
-  likedBy: [],
-});
-
+      // Fire-and-forget "new post" notification to the author
+      if (currentUser.uid) {
+        sendPostNotification({
+          receiverUid: currentUser.uid,
+          title: "Story published · BharatBlog",
+          body:
+            title.trim().length > 60
+              ? `${title.trim().slice(0, 57)}...`
+              : title.trim() || "Your story is live.",
+          data: {
+            type: "new_post",
+            postId: postRef.id,
+            slug,
+            click_action: `/post/${slug}`,
+          },
+        });
+      }
 
       navigate("/feed");
     } catch (err) {
@@ -200,63 +216,61 @@ export default function CreatePostPage() {
                 placeholder="Give your post a clear, strong title"
               />
             </div>
-{/* Image upload */}
-<div className="space-y-2">
-  <label className="block text-sm text-slate-200">
-    Cover image <span className="text-slate-500 text-xs">(optional)</span>
-  </label>
 
-  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-    {/* Styled "Choose file" */}
-    <label className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-slate-800 text-slate-100 text-xs sm:text-sm font-medium cursor-pointer hover:bg-slate-700 border border-slate-600">
-      Choose image
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleImageChange}
-        className="hidden"
-      />
-    </label>
+            {/* Image upload */}
+            <div className="space-y-2">
+              <label className="block text-sm text-slate-200">
+                Cover image{" "}
+                <span className="text-slate-500 text-xs">(optional)</span>
+              </label>
 
-    {/* Clear file name text */}
-    {imageFile && (
-      <span className="text-xs sm:text-sm text-slate-300 truncate max-w-[200px]">
-        {imageFile.name}
-      </span>
-    )}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <label className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-slate-800 text-slate-100 text-xs sm:text-sm font-medium cursor-pointer hover:bg-slate-700 border border-slate-600">
+                  Choose image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
 
-    {/* Upload button */}
-    <button
-      type="button"
-      onClick={handleUploadImage}
-      disabled={!imageFile || uploadingImage}
-      className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs sm:text-sm font-semibold shadow-md shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 transition-all duration-200"
-    >
-      {uploadingImage ? "Uploading..." : "Upload image"}
-    </button>
-  </div>
+                {imageFile && (
+                  <span className="text-xs sm:text-sm text-slate-300 truncate max-w-[200px]">
+                    {imageFile.name}
+                  </span>
+                )}
 
-  {imagePreview && (
-    <div className="mt-2 flex flex-col sm:flex-row gap-3 sm:items-center">
-      <img
-        src={imagePreview}
-        alt="Preview"
-        className="h-32 w-48 rounded-xl border border-slate-700 object-cover"
-      />
-      <p className="text-xs text-slate-400">
-        This is your local preview. Click “Upload image” to attach it
-        to your BharatBlog post.
-      </p>
-    </div>
-  )}
+                <button
+                  type="button"
+                  onClick={handleUploadImage}
+                  disabled={!imageFile || uploadingImage}
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs sm:text-sm font-semibold shadow-md shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 transition-all duration-200"
+                >
+                  {uploadingImage ? "Uploading..." : "Upload image"}
+                </button>
+              </div>
 
-  {imageUrl && (
-    <p className="mt-1 text-xs text-emerald-400">
-      Image uploaded successfully.
-    </p>
-  )}
-</div>
+              {imagePreview && (
+                <div className="mt-2 flex flex-col sm:flex-row gap-3 sm:items-center">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="h-32 w-48 rounded-xl border border-slate-700 object-cover"
+                  />
+                  <p className="text-xs text-slate-400">
+                    This is your local preview. Click “Upload image” to attach
+                    it to your BharatBlog post.
+                  </p>
+                </div>
+              )}
 
+              {imageUrl && (
+                <p className="mt-1 text-xs text-emerald-400">
+                  Image uploaded successfully.
+                </p>
+              )}
+            </div>
 
             {/* Markdown editor */}
             <div>
@@ -282,7 +296,11 @@ export default function CreatePostPage() {
             {/* Quick link inserter */}
             <div className="border border-slate-700 rounded-2xl p-3 bg-slate-900/70 space-y-2">
               <p className="text-xs text-slate-300">
-                Quick link helper <span className="text-slate-500">(no need to type https)</span>:
+                Quick link helper{" "}
+                <span className="text-slate-500">
+                  (no need to type https)
+                </span>
+                :
               </p>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input

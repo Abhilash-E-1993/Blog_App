@@ -1,5 +1,5 @@
 // src/pages/ChatsListPage.jsx
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { subscribeToConversations } from "../lib/chat";
@@ -11,8 +11,9 @@ export default function ChatsListPage() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  // newest chats on top
+  // Newest chats on top, derived from lastMessage.createdAt
   const sortedConversations = useMemo(() => {
+    if (!conversations.length) return [];
     return [...conversations].sort((a, b) => {
       const tsA = a.lastMessage?.createdAt;
       const tsB = b.lastMessage?.createdAt;
@@ -25,37 +26,40 @@ export default function ChatsListPage() {
   }, [conversations]);
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser?.uid) {
       setLoading(false);
       setConversations([]);
-      return;
+      return undefined;
     }
 
     setLoading(true);
     setError("");
 
-    const unsub = subscribeToConversations(
+    const unsubscribe = subscribeToConversations(
       currentUser.uid,
       (convs) => {
         setConversations(Array.isArray(convs) ? convs : []);
         setLoading(false);
       },
       (err) => {
-        console.error(err);
+        console.error("subscribeToConversations error:", err);
         setError("Failed to load chats.");
         setLoading(false);
       }
     );
 
     return () => {
-      if (typeof unsub === "function") unsub();
+      if (typeof unsubscribe === "function") unsubscribe();
     };
   }, [currentUser?.uid]);
 
-  const handleOpenChat = (convId) => {
-    if (!convId) return;
-    navigate(`/chat/${convId}`);
-  };
+  const handleOpenChat = useCallback(
+    (convId) => {
+      if (!convId) return;
+      navigate(`/chat/${convId}`);
+    },
+    [navigate]
+  );
 
   if (loading) {
     return (
@@ -71,7 +75,9 @@ export default function ChatsListPage() {
   return (
     <div className="max-w-2xl mx-auto py-6 px-4 sm:px-0">
       <div className="flex items-center justify-between gap-2 mb-2">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-50">Chats</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-50">
+          Chats
+        </h1>
         <button
           onClick={() => navigate(-1)}
           className="inline-flex items-center rounded-full border border-slate-700 px-3 py-1 text-[11px] text-slate-300 hover:bg-slate-800"
@@ -120,10 +126,11 @@ export default function ChatsListPage() {
                 ? conv.participantInfo[otherUid]
                 : null;
 
+            // Name/avatar come from participantInfo, which you update when user edits their profile.
             const otherName = info?.name || "BharatBlog user";
             const otherAvatar = info?.avatarUrl || "";
-            const last = conv.lastMessage || null;
 
+            const last = conv.lastMessage || null;
             const lastText =
               last?.text || "Say hi and start the conversation.";
             const lastTime = formatLastTime(last?.createdAt);
@@ -151,7 +158,7 @@ export default function ChatsListPage() {
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className={`
-                      relative h-9 w-9 rounded-full border object-cover flex-shrink-0
+                      relative h-9 w-9 rounded-full border flex-shrink-0
                       border-slate-700
                       group-hover:border-emerald-400/70
                       transition-colors duration-150
@@ -217,7 +224,7 @@ export default function ChatsListPage() {
 function formatLastTime(ts) {
   if (!ts) return "";
   try {
-    const d = ts.toDate ? ts.toDate() : ts; // Firestore Timestamp -> Date [web:420]
+    const d = ts.toDate ? ts.toDate() : ts;
     if (!(d instanceof Date)) return "";
 
     const now = new Date();

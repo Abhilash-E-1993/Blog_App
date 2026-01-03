@@ -16,6 +16,7 @@ import {
   getUserProfileLite,
   markConversationRead,
 } from "../lib/chat";
+import { sendChatNotification } from "../lib/notificationsApi";
 
 export default function ChatPage() {
   const { conversationId } = useParams();
@@ -28,7 +29,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false); // only for "you are typing" glow on button
+  const [isTyping, setIsTyping] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -43,7 +44,7 @@ export default function ChatPage() {
     }
   }, [messages, scrollToBottom]);
 
-  // load conversation + subscribe messages
+  // Load conversation + subscribe messages
   useEffect(() => {
     let unsubMessages = null;
     let isActive = true;
@@ -60,7 +61,6 @@ export default function ChatPage() {
 
         const convRef = doc(db, "conversations", conversationId);
         const convSnap = await getDoc(convRef);
-
         if (!isActive) return;
 
         if (!convSnap.exists()) {
@@ -85,7 +85,7 @@ export default function ChatPage() {
           return;
         }
 
-        let otherInfo =
+        const otherInfo =
           convData.participantInfo?.[otherUid] ||
           (await getUserProfileLite(otherUid));
 
@@ -147,6 +147,21 @@ export default function ChatPage() {
           trimmedInput
         );
 
+        // Fire-and-forget chat notification via backend (by receiverUid)
+        sendChatNotification({
+          receiverUid: otherUser.uid,
+          title: `${currentUser.displayName || "New message"} · Chat`,
+          body:
+            trimmedInput.length > 60
+              ? `${trimmedInput.slice(0, 57)}...`
+              : trimmedInput,
+          data: {
+            click_action: `/chat/${conversationId}`,
+            conversationId,
+            senderId: currentUser.uid,
+          },
+        });
+
         inputRef.current?.focus();
       } catch (err) {
         console.error(err);
@@ -175,15 +190,13 @@ export default function ChatPage() {
     [handleSubmit]
   );
 
-  // group messages by day for date separators
   const groupedMessages = useMemo(() => {
     const groups = [];
     let currentDate = null;
 
     messages.forEach((m) => {
       const d = m.createdAt?.toDate ? m.createdAt.toDate() : m.createdAt;
-      const dayKey =
-        d instanceof Date ? d.toDateString() : "Unknown date";
+      const dayKey = d instanceof Date ? d.toDateString() : "Unknown date";
 
       if (dayKey !== currentDate) {
         currentDate = dayKey;
@@ -191,9 +204,7 @@ export default function ChatPage() {
           type: "separator",
           key: `sep-${dayKey}`,
           label:
-            d instanceof Date
-              ? formatDayLabel(d)
-              : "Unknown date",
+            d instanceof Date ? formatDayLabel(d) : "Unknown date",
         });
       }
 
@@ -353,7 +364,7 @@ export default function ChatPage() {
         )}
 
         <div className="flex items-center gap-3 text-slate-500 text-xs">
-          {/* room for future icons (info, more) */}
+          {/* reserved for future actions */}
         </div>
       </header>
 
@@ -448,6 +459,7 @@ export default function ChatPage() {
                       <path
                         fillRule="evenodd"
                         d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
                       />
                     </svg>
                   </button>
@@ -497,7 +509,7 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;
@@ -555,5 +567,9 @@ function formatDayLabel(d) {
 
   if (isSameDay(d, today)) return "Today";
   if (isSameDay(d, yesterday)) return "Yesterday";
-  return d.toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString([], {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }

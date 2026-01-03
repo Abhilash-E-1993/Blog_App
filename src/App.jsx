@@ -1,6 +1,10 @@
 // src/App.jsx
 import { Routes, Route } from "react-router-dom";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
+import {
+  requestNotificationPermission,
+  subscribeToForegroundMessages,
+} from "./lib/notifications";
 
 // Lazy pages
 const FeedPage = lazy(() => import("./pages/FeedPage"));
@@ -17,31 +21,50 @@ const SearchAccountsPage = lazy(() => import("./pages/SearchAccountsPage"));
 const ChatsListPage = lazy(() => import("./pages/ChatsListPage"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
 
-// Non‑lazy components
+// Non-lazy components
 import ProtectedRoute from "./components/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
 import ChatLayout from "./pages/ChatLayout";
 
 export default function App() {
+  useEffect(() => {
+    // Ask permission once on app load and save token
+    requestNotificationPermission();
+
+    // Listen for foreground push notifications (no extra OS toast, just logs/UI)
+    const unsubscribePromise = subscribeToForegroundMessages((payload) => {
+      console.log("Foreground notification payload:", payload);
+      // TODO: in-app toast / badge / sound
+    });
+
+    return () => {
+      unsubscribePromise.then((unsubscribe) => {
+        if (typeof unsubscribe === "function") unsubscribe();
+      });
+    };
+  }, []);
+
   return (
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-slate-950">
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 border-4 border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
-            <p className="text-slate-300 text-sm">Loading BharatBlog...</p>
+            <p className="text-slate-300 text-sm">
+              Loading BharatBlog...
+            </p>
           </div>
         </div>
       }
     >
       <Routes>
-        {/* Public routes WITHOUT navbar */}
+        {/* Public routes (NO navbar) */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verified" element={<VerifiedLandingPage />} />
 
-        {/* Protected app routes WITH navbar */}
+        {/* Protected routes (WITH navbar) */}
         <Route
           path="/feed"
           element={
@@ -108,7 +131,7 @@ export default function App() {
           }
         />
 
-        {/* Public profile for any user (still behind auth) */}
+        {/* Public profile (still auth-protected) */}
         <Route
           path="/u/:uid"
           element={
@@ -132,7 +155,7 @@ export default function App() {
           }
         />
 
-        {/* Single chat WITHOUT navbar – full immersive chat */}
+        {/* Single chat WITHOUT navbar (immersive) */}
         <Route
           path="/chat/:conversationId"
           element={
