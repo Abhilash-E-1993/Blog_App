@@ -1,19 +1,12 @@
 // src/App.jsx
-<<<<<<< HEAD:my-app/src/App.jsx
-import { Routes, Route, useLocation } from "react-router-dom";
-import { Suspense, lazy, useEffect } from "react";
-=======
 import { Routes, Route } from "react-router-dom";
 import { Suspense, lazy, useEffect } from "react";
 import {
   requestNotificationPermission,
   subscribeToForegroundMessages,
 } from "./lib/notifications";
->>>>>>> fix/push-notification-clean:src/App.jsx
 
-import { subscribeToForegroundMessages } from "./lib/notifications";
-
-// Lazy-loaded pages
+// Lazy pages
 const FeedPage = lazy(() => import("./pages/FeedPage"));
 const CreatePostPage = lazy(() => import("./pages/CreatePostPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
@@ -32,45 +25,8 @@ const ChatPage = lazy(() => import("./pages/ChatPage"));
 import ProtectedRoute from "./components/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
 import ChatLayout from "./pages/ChatLayout";
-import AuthRedirect from "./pages/AuthRedirect";
-
-/* ======================================================
-   🌀 APP FALLBACK
-====================================================== */
-const AppFallback = () => (
-  <div className="min-h-screen flex items-center justify-center bg-slate-950">
-    <div className="flex flex-col items-center gap-3">
-      <div className="w-10 h-10 border-4 border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
-      <p className="text-slate-300 text-sm">Loading BharatBlog...</p>
-    </div>
-  </div>
-);
 
 export default function App() {
-<<<<<<< HEAD:my-app/src/App.jsx
-  const location = useLocation();
-
-  /* ======================================================
-     🔔 FOREGROUND PUSH NOTIFICATIONS
-  ====================================================== */
-  useEffect(() => {
-    let unsubscribeFn;
-
-    subscribeToForegroundMessages((payload) => {
-      console.log("🔔 Foreground notification received:", payload);
-
-      // Later you can replace this with a toast/snackbar
-      // Example:
-      // showToast(payload.notification.title, payload.notification.body);
-    }).then((unsubscribe) => {
-      unsubscribeFn = unsubscribe;
-    });
-
-    return () => {
-      if (typeof unsubscribeFn === "function") {
-        unsubscribeFn();
-      }
-=======
   useEffect(() => {
     // Ask permission once on app load and save token
     requestNotificationPermission();
@@ -85,22 +41,10 @@ export default function App() {
       unsubscribePromise.then((unsubscribe) => {
         if (typeof unsubscribe === "function") unsubscribe();
       });
->>>>>>> fix/push-notification-clean:src/App.jsx
     };
   }, []);
 
   return (
-<<<<<<< HEAD:my-app/src/App.jsx
-    <Suspense fallback={<AppFallback />}>
-      <Routes location={location}>
-        <Route element={<AuthRedirect />}>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/verified" element={<VerifiedLandingPage />} />
-        </Route>
-
-=======
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-slate-950">
@@ -121,7 +65,6 @@ export default function App() {
         <Route path="/verified" element={<VerifiedLandingPage />} />
 
         {/* Protected routes (WITH navbar) */}
->>>>>>> fix/push-notification-clean:src/App.jsx
         <Route
           path="/feed"
           element={
@@ -188,10 +131,7 @@ export default function App() {
           }
         />
 
-<<<<<<< HEAD:my-app/src/App.jsx
-=======
         {/* Public profile (still auth-protected) */}
->>>>>>> fix/push-notification-clean:src/App.jsx
         <Route
           path="/u/:uid"
           element={
@@ -203,6 +143,7 @@ export default function App() {
           }
         />
 
+        {/* Chats list WITH navbar */}
         <Route
           path="/chats"
           element={
@@ -214,10 +155,7 @@ export default function App() {
           }
         />
 
-<<<<<<< HEAD:my-app/src/App.jsx
-=======
         {/* Single chat WITHOUT navbar (immersive) */}
->>>>>>> fix/push-notification-clean:src/App.jsx
         <Route
           path="/chat/:conversationId"
           element={

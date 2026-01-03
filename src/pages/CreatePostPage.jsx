@@ -1,22 +1,18 @@
-// src/pages/CreateStoryPage.jsx
-import { useState, lazy, Suspense, useCallback } from "react";
+// src/pages/CreatePostPage.jsx
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   collection,
   addDoc,
   serverTimestamp,
+  doc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
+import MDEditor from "@uiw/react-md-editor";
 import { uploadImageToCloudinary } from "../lib/cloudinary";
 import { sendPostNotification } from "../lib/notificationsApi";
-
-// Same base URL strategy as chat/profile
-const NOTIFICATIONS_API_BASE =
-  import.meta.env.VITE_NOTIFICATIONS_API_BASE || "http://localhost:4000";
-
-// Lazy‑load heavy markdown editor to reduce initial bundle
-const MDEditor = lazy(() => import("@uiw/react-md-editor"));
 
 function slugify(title) {
   return title
@@ -33,28 +29,6 @@ function normalizeUrl(url) {
     return trimmed;
   }
   return `https://${trimmed}`;
-}
-
-// Notify backend that a new post was created
-async function notifyNewPost({ postId, authorId, authorName, title, slug }) {
-  try {
-    await fetch(`${NOTIFICATIONS_API_BASE}/api/notify-new-post`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        postId,
-        authorId,
-        authorName,
-        title,
-        slug,
-      }),
-    });
-  } catch (err) {
-    // Do not block UI on notification failure; just log it
-    console.error("Failed to notify new post:", err);
-  }
 }
 
 export default function CreatePostPage() {
@@ -124,21 +98,13 @@ export default function CreatePostPage() {
     }
 
     if (!title.trim() || !content.trim()) {
-      setError("Title and story content are required.");
+      setError("Title and content are required.");
       return;
     }
 
     try {
       setSubmitting(true);
 
-<<<<<<< HEAD:my-app/src/pages/CreatePostPage.jsx
-      // Derive author info locally (no extra Firestore read)
-      const email = profile?.email || currentUser.email || "";
-      const baseName =
-        profile?.name ||
-        currentUser.displayName ||
-        (email ? email.split("@")[0] : "BharatBlog author");
-=======
       // Resolve author name
       let authorName = "";
       try {
@@ -150,23 +116,23 @@ export default function CreatePostPage() {
       } catch (e2) {
         console.warn("Could not read user profile for name:", e2);
       }
->>>>>>> fix/push-notification-clean:src/pages/CreatePostPage.jsx
 
-      const authorName = baseName;
-      const authorEmail = email;
-      const authorAvatarUrl = profile?.avatarUrl || "";
+      if (!authorName) {
+        authorName =
+          currentUser.displayName ||
+          (currentUser.email
+            ? currentUser.email.split("@")[0]
+            : "Unknown");
+      }
 
       const baseSlug = slugify(title);
       const randomSuffix = Math.random().toString(36).slice(2, 7);
       const slug = `${baseSlug}-${randomSuffix}`;
 
-      const postsRef = collection(db, "posts");
+      const authorEmail = profile?.email || currentUser.email || "";
+      const authorAvatarUrl = profile?.avatarUrl || "";
 
-<<<<<<< HEAD:my-app/src/pages/CreatePostPage.jsx
-      const docRef = await addDoc(postsRef, {
-=======
       const postRef = await addDoc(collection(db, "posts"), {
->>>>>>> fix/push-notification-clean:src/pages/CreatePostPage.jsx
         title: title.trim(),
         slug,
         content,
@@ -181,16 +147,6 @@ export default function CreatePostPage() {
         likedBy: [],
       });
 
-<<<<<<< HEAD:my-app/src/pages/CreatePostPage.jsx
-      // Fire-and-forget new post notification
-      notifyNewPost({
-        postId: docRef.id,
-        authorId: currentUser.uid,
-        authorName,
-        title: title.trim(),
-        slug,
-      });
-=======
       // Fire-and-forget "new post" notification to the author
       if (currentUser.uid) {
         sendPostNotification({
@@ -208,20 +164,15 @@ export default function CreatePostPage() {
           },
         });
       }
->>>>>>> fix/push-notification-clean:src/pages/CreatePostPage.jsx
 
       navigate("/feed");
     } catch (err) {
       console.error(err);
-      setError("Failed to publish story. Please try again.");
+      setError("Failed to create post. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
-
-  const handleEditorChange = useCallback((val) => {
-    setContent(val || "");
-  }, []);
 
   return (
     <div className="max-w-3xl mx-auto py-4" data-color-mode="dark">
@@ -230,14 +181,14 @@ export default function CreatePostPage() {
         <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 mb-3">
           <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
           <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-orange-300">
-            Share a story
+            Write on BharatBlog
           </span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 tracking-tight">
-          Write a new story
+          Create a new post
         </h1>
         <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Capture your ideas, experiences, and learnings for the BharatBlog community.
+          Share your thoughts, stories, and ideas with the BharatBlog community.
         </p>
       </div>
 
@@ -249,35 +200,28 @@ export default function CreatePostPage() {
 
       {/* Main card */}
       <div className="relative">
-        <div className="absolute -inset-1 bg-gradient-to-r from-orange-500/12 via-emerald-500/12 to-sky-500/12 rounded-3xl blur-xl opacity-60" />
+        <div className="absolute -inset-1 bg-gradient-to-r from-orange-500/15 via-emerald-500/15 to-sky-500/15 rounded-3xl blur-xl opacity-60" />
         <div className="relative rounded-3xl border border-slate-800 bg-slate-950/90 backdrop-blur-xl p-4 sm:p-6 shadow-xl">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
             <div>
               <label className="block text-sm text-slate-200 mb-1">
-                Story title
+                Title
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full rounded-xl border-2 border-slate-700 bg-slate-900/80 px-3 py-2.5 text-sm sm:text-base text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                placeholder="Give your story a clear, strong headline"
+                placeholder="Give your post a clear, strong title"
               />
             </div>
 
-<<<<<<< HEAD:my-app/src/pages/CreatePostPage.jsx
-            {/* Image upload (optional) */}
-            <div className="space-y-2">
-              <label className="block text-sm text-slate-200">
-                Cover image <span className="text-slate-500 text-xs">(optional)</span>
-=======
             {/* Image upload */}
             <div className="space-y-2">
               <label className="block text-sm text-slate-200">
                 Cover image{" "}
                 <span className="text-slate-500 text-xs">(optional)</span>
->>>>>>> fix/push-notification-clean:src/pages/CreatePostPage.jsx
               </label>
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -303,11 +247,7 @@ export default function CreatePostPage() {
                   disabled={!imageFile || uploadingImage}
                   className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs sm:text-sm font-semibold shadow-md shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 transition-all duration-200"
                 >
-<<<<<<< HEAD:my-app/src/pages/CreatePostPage.jsx
-                  {uploadingImage ? "Uploading..." : "Attach cover"}
-=======
                   {uploadingImage ? "Uploading..." : "Upload image"}
->>>>>>> fix/push-notification-clean:src/pages/CreatePostPage.jsx
                 </button>
               </div>
 
@@ -319,55 +259,37 @@ export default function CreatePostPage() {
                     className="h-32 w-48 rounded-xl border border-slate-700 object-cover"
                   />
                   <p className="text-xs text-slate-400">
-<<<<<<< HEAD:my-app/src/pages/CreatePostPage.jsx
-                    This is a local preview. Click “Attach cover” to link it to your story.
-=======
                     This is your local preview. Click “Upload image” to attach
                     it to your BharatBlog post.
->>>>>>> fix/push-notification-clean:src/pages/CreatePostPage.jsx
                   </p>
                 </div>
               )}
 
               {imageUrl && (
                 <p className="mt-1 text-xs text-emerald-400">
-<<<<<<< HEAD:my-app/src/pages/CreatePostPage.jsx
-                  Cover image attached to your story.
-=======
                   Image uploaded successfully.
->>>>>>> fix/push-notification-clean:src/pages/CreatePostPage.jsx
                 </p>
               )}
             </div>
 
-            {/* Markdown editor (lazy‑loaded) */}
+            {/* Markdown editor */}
             <div>
               <label className="block text-sm text-slate-200 mb-1">
-                Story content (Markdown)
+                Content (Markdown)
               </label>
               <div className="border border-slate-700 rounded-2xl bg-slate-900/80 overflow-hidden">
-                <Suspense
-                  fallback={
-                    <textarea
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      placeholder="Loading editor... you can start typing your story here."
-                      className="w-full min-h-[200px] bg-slate-900/80 text-sm text-slate-100 px-3 py-2 border-0 focus:outline-none"
-                    />
-                  }
-                >
-                  <MDEditor
-                    value={content}
-                    onChange={handleEditorChange}
-                    height={320}
-                    textareaProps={{
-                      placeholder: "Write your story in Markdown...",
-                    }}
-                  />
-                </Suspense>
+                <MDEditor
+                  value={content}
+                  onChange={(val) => setContent(val || "")}
+                  height={320}
+                  textareaProps={{
+                    placeholder: "Write your post in Markdown...",
+                  }}
+                />
               </div>
               <p className="mt-1 text-xs text-slate-400">
-                Use headings, **bold**, _italic_, lists, links, and more to structure your story.
+                Supports headings, **bold**, _italic_, lists, links, tables, and
+                more.
               </p>
             </div>
 
@@ -385,14 +307,14 @@ export default function CreatePostPage() {
                   type="text"
                   value={rawLinkLabel}
                   onChange={(e) => setRawLinkLabel(e.target.value)}
-                  placeholder="Link text (e.g. docs, repo)"
+                  placeholder="Link text (e.g. Google)"
                   className="flex-1 rounded-xl border border-slate-600 bg-slate-900 px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <input
                   type="text"
                   value={rawLinkUrl}
                   onChange={(e) => setRawLinkUrl(e.target.value)}
-                  placeholder="github.com/username/repo"
+                  placeholder="google.com"
                   className="flex-1 rounded-xl border border-slate-600 bg-slate-900 px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <button
@@ -408,14 +330,14 @@ export default function CreatePostPage() {
             {/* Submit */}
             <div className="flex items-center justify-between gap-3">
               <p className="text-[11px] text-slate-500">
-                Your story will appear in the BharatBlog feed as soon as it is published.
+                Your post will appear in the BharatBlog feed after publishing.
               </p>
               <button
                 type="submit"
                 disabled={submitting}
                 className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-60 transition-all"
               >
-                {submitting ? "Publishing..." : "Publish story"}
+                {submitting ? "Publishing..." : "Publish post"}
               </button>
             </div>
           </form>

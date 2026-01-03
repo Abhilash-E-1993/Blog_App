@@ -13,17 +13,6 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-<<<<<<< HEAD:my-app/src/lib/firebase.js
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-
-export const getMessagingIfSupported = async () => {
-  const supported = await isSupported();
-  if (!supported) return null;
-  return getMessaging(app);
-};
-=======
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
@@ -43,4 +32,3 @@ export async function getMessagingIfSupported() {
     return null;
   }
 }
->>>>>>> fix/push-notification-clean:src/lib/firebase.js
