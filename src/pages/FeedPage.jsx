@@ -17,7 +17,7 @@ import { getOptimizedImageUrl } from "../lib/cloudinary";
 import { togglePostLike } from "../lib/likes";
 import { Heart } from "lucide-react";
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 2;
 
 export default function FeedPage() {
   const { currentUser } = useAuth();

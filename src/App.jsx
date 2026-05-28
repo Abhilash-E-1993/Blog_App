@@ -21,10 +21,12 @@ const SearchAccountsPage = lazy(() => import("./pages/SearchAccountsPage"));
 const ChatsListPage = lazy(() => import("./pages/ChatsListPage"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
 
+
 // Non-lazy components
 import ProtectedRoute from "./components/ProtectedRoute";
 import MainLayout from "./components/MainLayout";
 import ChatLayout from "./pages/ChatLayout";
+import LoadingFallback from "./pages/LoadingFallback"
 
 export default function App() {
   useEffect(() => {
@@ -47,14 +49,7 @@ export default function App() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-slate-950">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-4 border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
-            <p className="text-slate-300 text-sm">
-              Loading BharatBlog...
-            </p>
-          </div>
-        </div>
+        <LoadingFallback />
       }
     >
       <Routes>
